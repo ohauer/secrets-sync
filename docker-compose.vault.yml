@@ -1,0 +1,41 @@
+services:
+  vault:
+    image: hashicorp/vault:1.21
+    container_name: vault-dev
+    ports:
+      - "8200:8200"
+    environment:
+      VAULT_DEV_ROOT_TOKEN_ID: "dev-root-token"
+      VAULT_DEV_LISTEN_ADDRESS: "0.0.0.0:8200"
+    cap_add:
+      - IPC_LOCK
+    command: server -dev -dev-root-token-id=dev-root-token
+    healthcheck:
+      test: ["CMD", "vault", "status"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  vault-tls:
+    image: hashicorp/vault:1.21
+    container_name: vault-tls
+    ports:
+      - "8201:8200"
+    environment:
+      VAULT_ADDR: "https://0.0.0.0:8200"
+      VAULT_API_ADDR: "https://0.0.0.0:8200"
+    cap_add:
+      - IPC_LOCK
+    volumes:
+      - ./test-run/certs:/certs:ro
+      - ./test-run/vault-tls-config.hcl:/vault/config/vault.hcl:ro
+    command: server
+    healthcheck:
+      test: ["CMD", "wget", "--no-check-certificate", "-q", "-O-", "https://127.0.0.1:8200/v1/sys/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+networks:
+  default:
+    name: vault-network

@@ -1,0 +1,5 @@
+secretStore:
+  address: ""
+  authMethod: "token"
+
+secrets: []
