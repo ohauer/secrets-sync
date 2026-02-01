@@ -30,3 +30,6 @@ Thumbs.db
 
 # Test run directory
 test-run/
+
+# Project status (local only)
+PROJECT_STATUS.md
