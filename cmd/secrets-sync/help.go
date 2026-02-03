@@ -15,6 +15,7 @@ COMMANDS:
     (none)      Run the secrets sync service (default)
     init        Generate example configuration file
     validate    Validate configuration file
+    convert     Convert external-secrets YAML to docker-secrets format
     version     Show version information
     isready     Check if service is ready (for healthchecks)
     help        Show this help message
@@ -52,6 +53,9 @@ EXAMPLES:
 
     # Healthcheck
     secrets-sync isready
+
+    # Convert external-secrets to docker-secrets format
+    secrets-sync convert external-secret.yaml --mount-path devops
 
 For more information, see: https://github.com/ohauer/docker-secrets
 `)

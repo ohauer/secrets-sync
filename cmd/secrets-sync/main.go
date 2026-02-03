@@ -29,6 +29,8 @@ func main() {
 			os.Exit(0)
 		case "validate":
 			os.Exit(runValidate())
+		case "convert":
+			os.Exit(runConvert(os.Args[2:]))
 		case "isready":
 			os.Exit(isReady())
 		default:
