@@ -57,6 +57,9 @@ EXAMPLES:
     # Convert external-secrets to docker-secrets format
     secrets-sync convert external-secret.yaml --mount-path devops
 
+    # Convert with vault query (auto-detect field names)
+    secrets-sync convert external-secret.yaml --query-vault
+
 For more information, see: https://github.com/ohauer/docker-secrets
 `)
 }

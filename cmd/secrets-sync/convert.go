@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -45,10 +46,49 @@ type ExternalSecret struct {
 
 // ConvertConfig holds conversion parameters
 type ConvertConfig struct {
-	MountPath      string
-	KVVersion      string
-	OutputDir      string
+	MountPath       string
+	KVVersion       string
+	OutputDir       string
 	AutoDetectMount bool
+	QueryVault      bool
+	VaultAddr       string
+	VaultToken      string
+}
+
+// queryVaultFields queries Vault to get actual field names for a secret
+func queryVaultFields(mountPath, key, vaultAddr, vaultToken string) ([]string, error) {
+	if vaultAddr == "" || vaultToken == "" {
+		return nil, fmt.Errorf("vault address and token required")
+	}
+
+	// Use vault CLI to query field names
+	cmd := exec.Command("sh", "-c",
+		fmt.Sprintf("vault kv get -format=json %s/%s 2>/dev/null | jq -r '.data.data | keys[]' 2>/dev/null",
+			mountPath, key))
+	cmd.Env = append(os.Environ(),
+		"VAULT_ADDR="+vaultAddr,
+		"VAULT_TOKEN="+vaultToken,
+	)
+
+	output, err := cmd.Output()
+	if err != nil {
+		return nil, fmt.Errorf("failed to query vault: %w", err)
+	}
+
+	fields := strings.Split(strings.TrimSpace(string(output)), "\n")
+	var validFields []string
+	for _, f := range fields {
+		f = strings.TrimSpace(f)
+		if f != "" {
+			validFields = append(validFields, f)
+		}
+	}
+
+	if len(validFields) == 0 {
+		return nil, fmt.Errorf("no fields found")
+	}
+
+	return validFields, nil
 }
 
 // detectMountPath tries to infer mount path from secret key
@@ -168,19 +208,36 @@ func convertSingleSecret(es ExternalSecret, sourceFile string, cfg ConvertConfig
 		fmt.Printf("    mountPath: %q\n", mountPath)
 		fmt.Printf("    kvVersion: %q\n", cfg.KVVersion)
 		fmt.Printf("    refreshInterval: %q\n", refreshInterval)
-		fmt.Printf("    # Note: Uses dataFrom.extract - pulls ALL fields from secret\n")
-		fmt.Printf("    # Check actual fields with: vault kv get %s/%s\n", cfg.MountPath, key)
+
+		// Try to query vault for actual field names
+		var fields []string
+		if cfg.QueryVault {
+			queriedFields, err := queryVaultFields(mountPath, key, cfg.VaultAddr, cfg.VaultToken)
+			if err == nil && len(queriedFields) > 0 {
+				fields = queriedFields
+				fmt.Printf("    # Fields queried from Vault\n")
+			} else {
+				fmt.Printf("    # Note: Failed to query Vault (%v), using fallback\n", err)
+			}
+		}
+
 		fmt.Printf("    template:\n")
 		fmt.Printf("      data:\n")
 
-		// Use template if provided
+		// Use template if provided in external-secret
 		if len(es.Spec.Target.Template.Data) > 0 {
 			for k, v := range es.Spec.Target.Template.Data {
 				fmt.Printf("        %s: %q\n", k, v)
 			}
+		} else if len(fields) > 0 {
+			// Use queried fields from Vault
+			for _, field := range fields {
+				fmt.Printf("        %s: '{{ .%s }}'\n", field, field)
+			}
 		} else {
-			fmt.Printf("        # TODO: Add template mappings based on actual secret fields\n")
-			fmt.Printf("        example-field: '{{ .fieldName }}'\n")
+			// Fallback: output all fields as JSON
+			fmt.Printf("        # Fallback: outputs all fields as JSON (no vault access)\n")
+			fmt.Printf("        data.json: '{{ . | toJson }}'\n")
 		}
 
 		fmt.Printf("    files:\n")
@@ -189,8 +246,15 @@ func convertSingleSecret(es ExternalSecret, sourceFile string, cfg ConvertConfig
 				fmt.Printf("      - path: %q\n", filepath.Join(cfg.OutputDir, secretName, k))
 				fmt.Printf("        mode: \"0600\"\n")
 			}
+		} else if len(fields) > 0 {
+			// Create one file per field
+			for _, field := range fields {
+				fmt.Printf("      - path: %q\n", filepath.Join(cfg.OutputDir, secretName, field))
+				fmt.Printf("        mode: \"0600\"\n")
+			}
 		} else {
-			fmt.Printf("      - path: %q\n", filepath.Join(cfg.OutputDir, secretName, "data"))
+			// Fallback: single JSON file
+			fmt.Printf("      - path: %q\n", filepath.Join(cfg.OutputDir, secretName, "data.json"))
 			fmt.Printf("        mode: \"0600\"\n")
 		}
 		return nil
@@ -228,19 +292,25 @@ func runConvert(args []string) int {
 	if len(args) < 1 {
 		fmt.Fprintf(os.Stderr, "Usage: secrets-sync convert <external-secret-files...> [options]\n")
 		fmt.Fprintf(os.Stderr, "\nOptions:\n")
-		fmt.Fprintf(os.Stderr, "  --mount-path <path>   KV mount path (default: secret)\n")
+		fmt.Fprintf(os.Stderr, "  --mount-path <path>   KV mount path (default: auto-detect)\n")
 		fmt.Fprintf(os.Stderr, "  --kv-version <v1|v2>  KV version (default: v2)\n")
 		fmt.Fprintf(os.Stderr, "  --output-dir <dir>    Output directory for secrets (default: ./secrets)\n")
+		fmt.Fprintf(os.Stderr, "  --query-vault         Query Vault for actual field names (requires vault CLI)\n")
+		fmt.Fprintf(os.Stderr, "  --vault-addr <url>    Vault address (default: $VAULT_ADDR)\n")
+		fmt.Fprintf(os.Stderr, "  --vault-token <token> Vault token (default: $VAULT_TOKEN)\n")
 		fmt.Fprintf(os.Stderr, "\nExample:\n")
-		fmt.Fprintf(os.Stderr, "  secrets-sync convert external-secret.yaml --mount-path devops\n")
+		fmt.Fprintf(os.Stderr, "  secrets-sync convert external-secret.yaml --query-vault\n")
 		return 1
 	}
 
 	cfg := ConvertConfig{
-		MountPath:      "secret",
-		KVVersion:      "v2",
-		OutputDir:      "./secrets",
-		AutoDetectMount: true, // Enable by default
+		MountPath:       "secret",
+		KVVersion:       "v2",
+		OutputDir:       "./secrets",
+		AutoDetectMount: true,
+		QueryVault:      false,
+		VaultAddr:       os.Getenv("VAULT_ADDR"),
+		VaultToken:      os.Getenv("VAULT_TOKEN"),
 	}
 
 	var files []string
@@ -250,7 +320,7 @@ func runConvert(args []string) int {
 		case "--mount-path":
 			if i+1 < len(args) {
 				cfg.MountPath = args[i+1]
-				cfg.AutoDetectMount = false // Disable auto-detect if explicitly set
+				cfg.AutoDetectMount = false
 				i++
 			}
 		case "--kv-version":
@@ -261,6 +331,18 @@ func runConvert(args []string) int {
 		case "--output-dir":
 			if i+1 < len(args) {
 				cfg.OutputDir = args[i+1]
+				i++
+			}
+		case "--query-vault":
+			cfg.QueryVault = true
+		case "--vault-addr":
+			if i+1 < len(args) {
+				cfg.VaultAddr = args[i+1]
+				i++
+			}
+		case "--vault-token":
+			if i+1 < len(args) {
+				cfg.VaultToken = args[i+1]
 				i++
 			}
 		default:
