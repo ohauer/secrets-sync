@@ -78,14 +78,59 @@ func convertExternalSecret(inputFile string, cfg ConvertConfig) error {
 		return fmt.Errorf("failed to read file: %w", err)
 	}
 
-	var es ExternalSecret
-	if err := yaml.Unmarshal(data, &es); err != nil {
-		return fmt.Errorf("failed to parse YAML: %w", err)
+	// Try to parse as a List first
+	var list struct {
+		APIVersion string `yaml:"apiVersion"`
+		Kind       string `yaml:"kind"`
+		Items      []yaml.Node `yaml:"items"`
+	}
+	
+	if err := yaml.Unmarshal(data, &list); err == nil && list.Kind == "List" {
+		// Handle Kubernetes List with multiple ExternalSecrets
+		for i, item := range list.Items {
+			var es ExternalSecret
+			if err := item.Decode(&es); err != nil {
+				fmt.Fprintf(os.Stderr, "Warning: failed to parse item %d in %s: %v\n", i, inputFile, err)
+				continue
+			}
+			if es.Kind == "ExternalSecret" {
+				if err := convertSingleSecret(es, filepath.Base(inputFile), cfg); err != nil {
+					fmt.Fprintf(os.Stderr, "Warning: failed to convert item %d in %s: %v\n", i, inputFile, err)
+				}
+			}
+		}
+		return nil
 	}
 
-	if es.Kind != "ExternalSecret" {
-		return fmt.Errorf("not an ExternalSecret (kind: %s)", es.Kind)
+	// Try to parse as multi-document YAML
+	decoder := yaml.NewDecoder(strings.NewReader(string(data)))
+	count := 0
+	for {
+		var es ExternalSecret
+		if err := decoder.Decode(&es); err != nil {
+			if err.Error() == "EOF" {
+				break
+			}
+			// Skip non-ExternalSecret documents
+			continue
+		}
+
+		if es.Kind == "ExternalSecret" {
+			if err := convertSingleSecret(es, filepath.Base(inputFile), cfg); err != nil {
+				fmt.Fprintf(os.Stderr, "Warning: failed to convert document %d in %s: %v\n", count, inputFile, err)
+			}
+			count++
+		}
 	}
+
+	if count > 0 {
+		return nil
+	}
+
+	return fmt.Errorf("no ExternalSecret documents found in file")
+}
+
+func convertSingleSecret(es ExternalSecret, sourceFile string, cfg ConvertConfig) error {
 
 	// Build secret configuration
 	secretName := es.Spec.Target.Name
@@ -114,7 +159,7 @@ func convertExternalSecret(inputFile string, cfg ConvertConfig) error {
 		mountPath = detectMountPath(key)
 	}
 
-	fmt.Printf("\n# Converted from: %s\n", filepath.Base(inputFile))
+	fmt.Printf("\n# Converted from: %s (secret: %s)\n", sourceFile, secretName)
 	fmt.Printf("  - name: %q\n", secretName)
 
 	// Handle dataFrom.extract (pulls all fields)
