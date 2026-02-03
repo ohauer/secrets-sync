@@ -15,7 +15,7 @@ type RetryConfig struct {
 }
 
 // FetchSecretWithRetry fetches a secret with exponential backoff retry
-func (c *Client) FetchSecretWithRetry(ctx context.Context, mountPath, secretPath string, config RetryConfig) (SecretData, error) {
+func (c *Client) FetchSecretWithRetry(ctx context.Context, mountPath, secretPath, kvVersion string, config RetryConfig) (SecretData, error) {
 	var lastErr error
 	backoff := config.InitialBackoff
 
@@ -33,7 +33,7 @@ func (c *Client) FetchSecretWithRetry(ctx context.Context, mountPath, secretPath
 			}
 		}
 
-		data, err := c.FetchSecret(mountPath, secretPath)
+		data, err := c.FetchSecret(mountPath, secretPath, kvVersion)
 		if err == nil {
 			return data, nil
 		}

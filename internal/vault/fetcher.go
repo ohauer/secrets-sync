@@ -10,9 +10,14 @@ import (
 // SecretData represents the data retrieved from Vault
 type SecretData map[string]interface{}
 
-// FetchSecret fetches a secret from Vault KV v2
-func (c *Client) FetchSecret(mountPath, secretPath string) (SecretData, error) {
-	fullPath := path.Join(mountPath, "data", secretPath)
+// FetchSecret fetches a secret from Vault KV v1 or v2
+func (c *Client) FetchSecret(mountPath, secretPath, kvVersion string) (SecretData, error) {
+	var fullPath string
+	if kvVersion == "v2" {
+		fullPath = path.Join(mountPath, "data", secretPath)
+	} else {
+		fullPath = path.Join(mountPath, secretPath)
+	}
 
 	result, err := c.executeWithBreaker(func() (interface{}, error) {
 		return c.client.Logical().Read(fullPath)
@@ -34,10 +39,13 @@ func (c *Client) FetchSecret(mountPath, secretPath string) (SecretData, error) {
 		return nil, fmt.Errorf("secret has no data")
 	}
 
-	data, ok := secret.Data["data"].(map[string]interface{})
-	if !ok {
-		return nil, fmt.Errorf("invalid secret data format")
+	if kvVersion == "v2" {
+		data, ok := secret.Data["data"].(map[string]interface{})
+		if !ok {
+			return nil, fmt.Errorf("invalid secret data format for KV v2")
+		}
+		return SecretData(data), nil
 	}
 
-	return SecretData(data), nil
+	return SecretData(secret.Data), nil
 }

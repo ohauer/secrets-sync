@@ -31,7 +31,7 @@ func TestFetchSecret_Success(t *testing.T) {
 		t.Fatalf("failed to create client: %v", err)
 	}
 
-	data, err := client.FetchSecret("secret", "test/path")
+	data, err := client.FetchSecret("secret", "test/path", "v2")
 	if err != nil {
 		t.Fatalf("failed to fetch secret: %v", err)
 	}
@@ -56,7 +56,7 @@ func TestFetchSecret_NotFound(t *testing.T) {
 		t.Fatalf("failed to create client: %v", err)
 	}
 
-	_, err = client.FetchSecret("secret", "nonexistent")
+	_, err = client.FetchSecret("secret", "nonexistent", "v2")
 	if err == nil {
 		t.Error("expected error for nonexistent secret, got nil")
 	}
@@ -94,7 +94,7 @@ func TestFetchSecretWithRetry_Success(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	data, err := client.FetchSecretWithRetry(ctx, "secret", "test/path", config)
+	data, err := client.FetchSecretWithRetry(ctx, "secret", "test/path", "v2", config)
 	if err != nil {
 		t.Fatalf("failed to fetch secret with retry: %v", err)
 	}
@@ -127,7 +127,7 @@ func TestFetchSecretWithRetry_MaxRetriesExceeded(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	_, err = client.FetchSecretWithRetry(ctx, "secret", "test/path", config)
+	_, err = client.FetchSecretWithRetry(ctx, "secret", "test/path", "v2", config)
 	if err == nil {
 		t.Error("expected error after max retries, got nil")
 	}
@@ -154,7 +154,7 @@ func TestFetchSecretWithRetry_ContextCancelled(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
 	defer cancel()
 
-	_, err = client.FetchSecretWithRetry(ctx, "secret", "test/path", config)
+	_, err = client.FetchSecretWithRetry(ctx, "secret", "test/path", "v2", config)
 	if err == nil {
 		t.Error("expected error for cancelled context, got nil")
 	}
@@ -182,7 +182,7 @@ func TestFetchSecretWithRetry_ExponentialBackoff(t *testing.T) {
 
 	ctx := context.Background()
 	start := time.Now()
-	_, _ = client.FetchSecretWithRetry(ctx, "secret", "test/path", config)
+	_, _ = client.FetchSecretWithRetry(ctx, "secret", "test/path", "v2", config)
 	elapsed := time.Since(start)
 
 	if elapsed < 10*time.Millisecond {
@@ -191,5 +191,84 @@ func TestFetchSecretWithRetry_ExponentialBackoff(t *testing.T) {
 
 	if attempts < 4 {
 		t.Errorf("expected at least 4 attempts, got: %d", attempts)
+	}
+}
+
+func TestFetchSecret_V1_Success(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/v1/secret/test/path" {
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{
+                "data": {
+                    "username": "testuser",
+                    "password": "testpass"
+                }
+            }`))
+			return
+		}
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer server.Close()
+
+	client, err := NewClient(server.URL)
+	if err != nil {
+		t.Fatalf("failed to create client: %v", err)
+	}
+
+	data, err := client.FetchSecret("secret", "test/path", "v1")
+	if err != nil {
+		t.Fatalf("failed to fetch secret: %v", err)
+	}
+
+	if data["username"] != "testuser" {
+		t.Errorf("expected username 'testuser', got: %v", data["username"])
+	}
+
+	if data["password"] != "testpass" {
+		t.Errorf("expected password 'testpass', got: %v", data["password"])
+	}
+}
+
+func TestFetchSecret_V1_PathConstruction(t *testing.T) {
+	var requestedPath string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requestedPath = r.URL.Path
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"data": {"key": "value"}}`))
+	}))
+	defer server.Close()
+
+	client, err := NewClient(server.URL)
+	if err != nil {
+		t.Fatalf("failed to create client: %v", err)
+	}
+
+	_, _ = client.FetchSecret("secret", "test/path", "v1")
+
+	expectedPath := "/v1/secret/test/path"
+	if requestedPath != expectedPath {
+		t.Errorf("expected path %s, got: %s", expectedPath, requestedPath)
+	}
+}
+
+func TestFetchSecret_V2_PathConstruction(t *testing.T) {
+	var requestedPath string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requestedPath = r.URL.Path
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"data": {"data": {"key": "value"}}}`))
+	}))
+	defer server.Close()
+
+	client, err := NewClient(server.URL)
+	if err != nil {
+		t.Fatalf("failed to create client: %v", err)
+	}
+
+	_, _ = client.FetchSecret("secret", "test/path", "v2")
+
+	expectedPath := "/v1/secret/data/test/path"
+	if requestedPath != expectedPath {
+		t.Errorf("expected path %s, got: %s", expectedPath, requestedPath)
 	}
 }
