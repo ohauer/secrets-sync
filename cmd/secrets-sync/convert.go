@@ -360,6 +360,16 @@ func runConvert(args []string) int {
 	fmt.Println("# Generated configuration from external-secrets")
 	fmt.Println("# Review and adjust template fields as needed")
 	fmt.Println()
+
+	// Generate secretStore section if vault credentials are available
+	if cfg.QueryVault && cfg.VaultAddr != "" && cfg.VaultToken != "" {
+		fmt.Println("secretStore:")
+		fmt.Printf("  address: %q\n", cfg.VaultAddr)
+		fmt.Println("  authMethod: \"token\"")
+		fmt.Println("  token: \"${VAULT_TOKEN}\"")
+		fmt.Println()
+	}
+
 	fmt.Println("secrets:")
 
 	for _, file := range files {
