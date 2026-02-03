@@ -31,8 +31,9 @@ func NewSecretSyncer(vaultClient *vault.Client, retryConfig vault.RetryConfig) *
 func (s *SecretSyncer) SyncSecret(ctx context.Context, cfg *config.Config, secret config.Secret) error {
 	data, err := s.vaultClient.FetchSecretWithRetry(
 		ctx,
-		cfg.SecretStore.MountPath,
-		secret.Path,
+		secret.MountPath,
+		secret.Key,
+		secret.KVVersion,
 		s.retryConfig,
 	)
 	if err != nil {

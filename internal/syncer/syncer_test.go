@@ -44,14 +44,14 @@ func TestSyncSecret_Success(t *testing.T) {
 
 	tmpDir := t.TempDir()
 	cfg := &config.Config{
-		SecretStore: config.SecretStore{
-			MountPath: "secret",
-		},
+		SecretStore: config.SecretStore{},
 	}
 
 	secret := config.Secret{
-		Name: "test-secret",
-		Path: "test/path",
+		Name:      "test-secret",
+		Key:       "test/path",
+		MountPath: "secret",
+		KVVersion: "v2",
 		Template: config.Template{
 			Data: map[string]string{
 				"username": "{{ .username }}",
@@ -117,14 +117,14 @@ func TestScheduler_AddSecret(t *testing.T) {
 
 	tmpDir := t.TempDir()
 	cfg := &config.Config{
-		SecretStore: config.SecretStore{
-			MountPath: "secret",
-		},
+		SecretStore: config.SecretStore{},
 	}
 
 	secret := config.Secret{
 		Name:            "test-secret",
-		Path:            "test/path",
+		Key:             "test/path",
+		MountPath:       "secret",
+		KVVersion:       "v2",
 		RefreshInterval: 100 * time.Millisecond,
 		Template: config.Template{
 			Data: map[string]string{
@@ -184,14 +184,14 @@ func TestScheduler_PeriodicSync(t *testing.T) {
 
 	tmpDir := t.TempDir()
 	cfg := &config.Config{
-		SecretStore: config.SecretStore{
-			MountPath: "secret",
-		},
+		SecretStore: config.SecretStore{},
 	}
 
 	secret := config.Secret{
 		Name:            "test-secret",
-		Path:            "test/path",
+		Key:             "test/path",
+		MountPath:       "secret",
+		KVVersion:       "v2",
 		RefreshInterval: 100 * time.Millisecond,
 		Template: config.Template{
 			Data: map[string]string{
@@ -244,14 +244,14 @@ func TestScheduler_RemoveSecret(t *testing.T) {
 
 	tmpDir := t.TempDir()
 	cfg := &config.Config{
-		SecretStore: config.SecretStore{
-			MountPath: "secret",
-		},
+		SecretStore: config.SecretStore{},
 	}
 
 	secret := config.Secret{
 		Name:            "test-secret",
-		Path:            "test/path",
+		Key:             "test/path",
+		MountPath:       "secret",
+		KVVersion:       "v2",
 		RefreshInterval: 50 * time.Millisecond,
 		Template: config.Template{
 			Data: map[string]string{
