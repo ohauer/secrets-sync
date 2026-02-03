@@ -53,6 +53,32 @@ type ConvertConfig struct {
 	QueryVault      bool
 	VaultAddr       string
 	VaultToken      string
+	VaultRoleID     string
+	VaultSecretID   string
+}
+
+// getVaultToken obtains a token from AppRole if roleId and secretId are provided
+func getVaultToken(vaultAddr, roleId, secretId string) (string, error) {
+	if vaultAddr == "" || roleId == "" || secretId == "" {
+		return "", fmt.Errorf("vault address, role_id, and secret_id required")
+	}
+
+	cmd := exec.Command("sh", "-c",
+		fmt.Sprintf("vault write -format=json auth/approle/login role_id=%s secret_id=%s 2>/dev/null | jq -r '.auth.client_token' 2>/dev/null",
+			roleId, secretId))
+	cmd.Env = append(os.Environ(), "VAULT_ADDR="+vaultAddr)
+
+	output, err := cmd.Output()
+	if err != nil {
+		return "", fmt.Errorf("failed to authenticate with approle: %w", err)
+	}
+
+	token := strings.TrimSpace(string(output))
+	if token == "" || token == "null" {
+		return "", fmt.Errorf("authentication failed: no token returned")
+	}
+
+	return token, nil
 }
 
 // queryVaultFields queries Vault to get actual field names for a secret
@@ -292,14 +318,17 @@ func runConvert(args []string) int {
 	if len(args) < 1 {
 		fmt.Fprintf(os.Stderr, "Usage: secrets-sync convert <external-secret-files...> [options]\n")
 		fmt.Fprintf(os.Stderr, "\nOptions:\n")
-		fmt.Fprintf(os.Stderr, "  --mount-path <path>   KV mount path (default: auto-detect)\n")
-		fmt.Fprintf(os.Stderr, "  --kv-version <v1|v2>  KV version (default: v2)\n")
-		fmt.Fprintf(os.Stderr, "  --output-dir <dir>    Output directory for secrets (default: ./secrets)\n")
-		fmt.Fprintf(os.Stderr, "  --query-vault         Query Vault for actual field names (requires vault CLI)\n")
-		fmt.Fprintf(os.Stderr, "  --vault-addr <url>    Vault address (default: $VAULT_ADDR)\n")
-		fmt.Fprintf(os.Stderr, "  --vault-token <token> Vault token (default: $VAULT_TOKEN)\n")
+		fmt.Fprintf(os.Stderr, "  --mount-path <path>      KV mount path (default: auto-detect)\n")
+		fmt.Fprintf(os.Stderr, "  --kv-version <v1|v2>     KV version (default: v2)\n")
+		fmt.Fprintf(os.Stderr, "  --output-dir <dir>       Output directory for secrets (default: ./secrets)\n")
+		fmt.Fprintf(os.Stderr, "  --query-vault            Query Vault for actual field names (requires vault CLI)\n")
+		fmt.Fprintf(os.Stderr, "  --vault-addr <url>       Vault address (default: $VAULT_ADDR)\n")
+		fmt.Fprintf(os.Stderr, "  --vault-token <token>    Vault token (default: $VAULT_TOKEN)\n")
+		fmt.Fprintf(os.Stderr, "  --vault-role-id <id>     Vault AppRole role_id (default: $VAULT_ROLE_ID)\n")
+		fmt.Fprintf(os.Stderr, "  --vault-secret-id <id>   Vault AppRole secret_id (default: $VAULT_SECRET_ID)\n")
 		fmt.Fprintf(os.Stderr, "\nExample:\n")
 		fmt.Fprintf(os.Stderr, "  secrets-sync convert external-secret.yaml --query-vault\n")
+		fmt.Fprintf(os.Stderr, "  secrets-sync convert external-secret.yaml --query-vault --vault-role-id <id> --vault-secret-id <id>\n")
 		return 1
 	}
 
@@ -311,6 +340,8 @@ func runConvert(args []string) int {
 		QueryVault:      false,
 		VaultAddr:       os.Getenv("VAULT_ADDR"),
 		VaultToken:      os.Getenv("VAULT_TOKEN"),
+		VaultRoleID:     os.Getenv("VAULT_ROLE_ID"),
+		VaultSecretID:   os.Getenv("VAULT_SECRET_ID"),
 	}
 
 	var files []string
@@ -345,6 +376,16 @@ func runConvert(args []string) int {
 				cfg.VaultToken = args[i+1]
 				i++
 			}
+		case "--vault-role-id":
+			if i+1 < len(args) {
+				cfg.VaultRoleID = args[i+1]
+				i++
+			}
+		case "--vault-secret-id":
+			if i+1 < len(args) {
+				cfg.VaultSecretID = args[i+1]
+				i++
+			}
 		default:
 			if !strings.HasPrefix(arg, "--") {
 				files = append(files, arg)
@@ -355,6 +396,29 @@ func runConvert(args []string) int {
 	if len(files) == 0 {
 		fmt.Fprintf(os.Stderr, "Error: no input files specified\n")
 		return 1
+	}
+
+	// If query-vault is enabled, ensure we have credentials
+	if cfg.QueryVault {
+		// Try to get token from AppRole if provided
+		if cfg.VaultToken == "" && cfg.VaultRoleID != "" && cfg.VaultSecretID != "" {
+			token, err := getVaultToken(cfg.VaultAddr, cfg.VaultRoleID, cfg.VaultSecretID)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Error: failed to authenticate with AppRole: %v\n", err)
+				return 1
+			}
+			cfg.VaultToken = token
+		}
+
+		// Verify we have required credentials
+		if cfg.VaultAddr == "" || cfg.VaultToken == "" {
+			fmt.Fprintf(os.Stderr, "Error: --query-vault requires vault credentials\n")
+			fmt.Fprintf(os.Stderr, "Provide either:\n")
+			fmt.Fprintf(os.Stderr, "  - VAULT_ADDR and VAULT_TOKEN environment variables\n")
+			fmt.Fprintf(os.Stderr, "  - --vault-addr and --vault-token flags\n")
+			fmt.Fprintf(os.Stderr, "  - --vault-addr, --vault-role-id, and --vault-secret-id flags\n")
+			return 1
+		}
 	}
 
 	fmt.Println("# Generated configuration from external-secrets")
