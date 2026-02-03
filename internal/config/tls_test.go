@@ -156,7 +156,9 @@ func TestValidate_TLSConfig(t *testing.T) {
 				Secrets: []Secret{
 					{
 						Name:            "test",
-						Path:            "test/path",
+						Key:             "test/path",
+						MountPath:       "secret",
+						KVVersion:       "v2",
 						RefreshInterval: 60000000000,
 						Template: Template{
 							Data: map[string]string{"key": "{{ .value }}"},

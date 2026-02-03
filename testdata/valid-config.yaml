@@ -2,12 +2,12 @@ secretStore:
   address: "https://vault.example.com"
   authMethod: "token"
   token: "${VAULT_TOKEN}"
-  kvVersion: "v2"
-  mountPath: "secret"
 
 secrets:
   - name: "tls-cert"
-    path: "common/tls/example-cert"
+    key: "common/tls/example-cert"
+    mountPath: "secret"
+    kvVersion: "v2"
     refreshInterval: "30m"
     template:
       data:
@@ -20,7 +20,9 @@ secrets:
         mode: "0600"
 
   - name: "database-creds"
-    path: "database/prod/credentials"
+    key: "database/prod/credentials"
+    mountPath: "secret"
+    kvVersion: "v2"
     refreshInterval: "5m"
     template:
       data:

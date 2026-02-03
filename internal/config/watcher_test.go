@@ -17,12 +17,12 @@ func TestWatcher_DetectsChanges(t *testing.T) {
   address: "https://vault.example.com"
   authMethod: "token"
   token: "test-token"
-  kvVersion: "v2"
-  mountPath: "secret"
 
 secrets:
   - name: "test-secret"
-    path: "test/path"
+    key: "test/path"
+    mountPath: "secret"
+    kvVersion: "v2"
     refreshInterval: "5m"
     template:
       data:
@@ -57,12 +57,12 @@ secrets:
   address: "https://vault.example.com"
   authMethod: "token"
   token: "updated-token"
-  kvVersion: "v2"
-  mountPath: "secret"
 
 secrets:
   - name: "updated-secret"
-    path: "test/path"
+    key: "test/path"
+    mountPath: "secret"
+    kvVersion: "v2"
     refreshInterval: "10m"
     template:
       data:
@@ -99,12 +99,12 @@ func TestWatcher_InvalidConfigIgnored(t *testing.T) {
   address: "https://vault.example.com"
   authMethod: "token"
   token: "test-token"
-  kvVersion: "v2"
-  mountPath: "secret"
 
 secrets:
   - name: "test-secret"
-    path: "test/path"
+    key: "test/path"
+    mountPath: "secret"
+    kvVersion: "v2"
     refreshInterval: "5m"
     template:
       data:

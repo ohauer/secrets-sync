@@ -15,8 +15,6 @@ type SecretStore struct {
 	Token      string `yaml:"token"`
 	RoleID     string `yaml:"roleId"`
 	SecretID   string `yaml:"secretId"`
-	KVVersion  string `yaml:"kvVersion"`
-	MountPath  string `yaml:"mountPath"`
 
 	// TLS Configuration
 	TLSSkipVerify bool   `yaml:"tlsSkipVerify,omitempty"` // Skip TLS verification (insecure)
@@ -29,7 +27,9 @@ type SecretStore struct {
 // Secret defines a single secret to sync
 type Secret struct {
 	Name            string        `yaml:"name"`
-	Path            string        `yaml:"path"`
+	Key             string        `yaml:"key"`
+	MountPath       string        `yaml:"mountPath"`
+	KVVersion       string        `yaml:"kvVersion"`
 	RefreshInterval time.Duration `yaml:"refreshInterval"`
 	Template        Template      `yaml:"template"`
 	Files           []File        `yaml:"files"`

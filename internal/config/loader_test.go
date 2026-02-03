@@ -60,7 +60,9 @@ func TestValidate_MissingAddress(t *testing.T) {
 		Secrets: []Secret{
 			{
 				Name:            "test",
-				Path:            "test/path",
+				Key:             "test/path",
+				MountPath:       "secret",
+				KVVersion:       "v2",
 				RefreshInterval: 5 * time.Minute,
 				Template:        Template{Data: map[string]string{"key": "value"}},
 				Files:           []File{{Path: "/test"}},
@@ -83,7 +85,9 @@ func TestValidate_InvalidAuthMethod(t *testing.T) {
 		Secrets: []Secret{
 			{
 				Name:            "test",
-				Path:            "test/path",
+				Key:             "test/path",
+				MountPath:       "secret",
+				KVVersion:       "v2",
 				RefreshInterval: 5 * time.Minute,
 				Template:        Template{Data: map[string]string{"key": "value"}},
 				Files:           []File{{Path: "/test"}},
