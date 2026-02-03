@@ -426,11 +426,19 @@ func runConvert(args []string) int {
 	fmt.Println()
 
 	// Generate secretStore section if vault credentials are available
-	if cfg.QueryVault && cfg.VaultAddr != "" && cfg.VaultToken != "" {
+	if cfg.QueryVault && cfg.VaultAddr != "" {
 		fmt.Println("secretStore:")
 		fmt.Printf("  address: %q\n", cfg.VaultAddr)
-		fmt.Println("  authMethod: \"token\"")
-		fmt.Println("  token: \"${VAULT_TOKEN}\"")
+		
+		// Use AppRole if role_id/secret_id were provided, otherwise token
+		if cfg.VaultRoleID != "" && cfg.VaultSecretID != "" {
+			fmt.Println("  authMethod: \"approle\"")
+			fmt.Println("  roleId: \"${VAULT_ROLE_ID}\"")
+			fmt.Println("  secretId: \"${VAULT_SECRET_ID}\"")
+		} else {
+			fmt.Println("  authMethod: \"token\"")
+			fmt.Println("  token: \"${VAULT_TOKEN}\"")
+		}
 		fmt.Println()
 	}
 
