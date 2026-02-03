@@ -31,12 +31,12 @@ secretStore:
   address: "http://localhost:8200"
   authMethod: "token"
   token: "dev-root-token"
-  kvVersion: "v2"
-  mountPath: "secret"
 
 secrets:
   - name: "tls-cert"
-    path: "common/tls/example-cert"
+    key: "common/tls/example-cert"
+    mountPath: "secret"
+    kvVersion: "v2"
     refreshInterval: "30m"
     template:
       data:

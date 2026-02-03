@@ -2,12 +2,13 @@ secretStore:
   address: "http://localhost:8200"
   authMethod: "token"
   token: "dev-root-token"
-  kvVersion: "v2"
-  mountPath: "secret"
 
 # Each secret defines:
-# 1. template.data - Map of keys to template expressions
-# 2. files - List of output files
+# 1. key - Path to the secret in Vault
+# 2. mountPath - KV secrets engine mount path
+# 3. kvVersion - KV engine version (v1 or v2)
+# 4. template.data - Map of keys to template expressions
+# 5. files - List of output files
 # The mapping is positional: data keys are written to files in order
 #   - First key in template.data -> First file in files list
 #   - Second key in template.data -> Second file in files list
@@ -15,7 +16,9 @@ secretStore:
 
 secrets:
   - name: "tls-cert"
-    path: "common/tls/example-cert"
+    key: "common/tls/example-cert"
+    mountPath: "secret"
+    kvVersion: "v2"
     refreshInterval: "30m"
     template:
       data:
@@ -28,7 +31,9 @@ secrets:
         mode: "0600"
 
   - name: "database-creds"
-    path: "database/prod/credentials"
+    key: "database/prod/credentials"
+    mountPath: "secret"
+    kvVersion: "v2"
     refreshInterval: "5m"
     template:
       data:
@@ -41,7 +46,9 @@ secrets:
         mode: "0600"
 
   - name: "api-keys"
-    path: "app/config"
+    key: "app/config"
+    mountPath: "secret"
+    kvVersion: "v2"
     refreshInterval: "1h"
     template:
       data:
