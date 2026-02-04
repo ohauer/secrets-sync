@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -125,9 +126,20 @@ func detectMountPath(key string) string {
 }
 
 func convertExternalSecret(inputFile string, cfg ConvertConfig) error {
-	data, err := os.ReadFile(inputFile)
-	if err != nil {
-		return fmt.Errorf("failed to read file: %w", err)
+	var data []byte
+	var err error
+	
+	// Support stdin with "-"
+	if inputFile == "-" {
+		data, err = io.ReadAll(os.Stdin)
+		if err != nil {
+			return fmt.Errorf("failed to read stdin: %w", err)
+		}
+	} else {
+		data, err = os.ReadFile(inputFile)
+		if err != nil {
+			return fmt.Errorf("failed to read file: %w", err)
+		}
 	}
 
 	// Try to parse as a List first
@@ -139,15 +151,19 @@ func convertExternalSecret(inputFile string, cfg ConvertConfig) error {
 	
 	if err := yaml.Unmarshal(data, &list); err == nil && list.Kind == "List" {
 		// Handle Kubernetes List with multiple ExternalSecrets
+		sourceFile := inputFile
+		if inputFile == "-" {
+			sourceFile = "stdin"
+		}
 		for i, item := range list.Items {
 			var es ExternalSecret
 			if err := item.Decode(&es); err != nil {
-				fmt.Fprintf(os.Stderr, "Warning: failed to parse item %d in %s: %v\n", i, inputFile, err)
+				fmt.Fprintf(os.Stderr, "Warning: failed to parse item %d in %s: %v\n", i, sourceFile, err)
 				continue
 			}
 			if es.Kind == "ExternalSecret" {
-				if err := convertSingleSecret(es, filepath.Base(inputFile), cfg); err != nil {
-					fmt.Fprintf(os.Stderr, "Warning: failed to convert item %d in %s: %v\n", i, inputFile, err)
+				if err := convertSingleSecret(es, sourceFile, cfg); err != nil {
+					fmt.Fprintf(os.Stderr, "Warning: failed to convert item %d in %s: %v\n", i, sourceFile, err)
 				}
 			}
 		}
@@ -155,6 +171,10 @@ func convertExternalSecret(inputFile string, cfg ConvertConfig) error {
 	}
 
 	// Try to parse as multi-document YAML
+	sourceFile := inputFile
+	if inputFile == "-" {
+		sourceFile = "stdin"
+	}
 	decoder := yaml.NewDecoder(strings.NewReader(string(data)))
 	count := 0
 	for {
@@ -168,8 +188,8 @@ func convertExternalSecret(inputFile string, cfg ConvertConfig) error {
 		}
 
 		if es.Kind == "ExternalSecret" {
-			if err := convertSingleSecret(es, filepath.Base(inputFile), cfg); err != nil {
-				fmt.Fprintf(os.Stderr, "Warning: failed to convert document %d in %s: %v\n", count, inputFile, err)
+			if err := convertSingleSecret(es, sourceFile, cfg); err != nil {
+				fmt.Fprintf(os.Stderr, "Warning: failed to convert document %d in %s: %v\n", count, sourceFile, err)
 			}
 			count++
 		}

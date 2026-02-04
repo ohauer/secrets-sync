@@ -130,6 +130,10 @@ Convert ExternalSecret resources to docker-secrets format (supports both YAML an
 # Works with JSON too
 ./secrets-sync convert external-secret.json > config.yaml
 
+# Read from stdin (useful with kubectl)
+kubectl get externalsecret my-secret -o json | ./secrets-sync convert - --query-vault > config.yaml
+kubectl get externalsecrets -n namespace -o json | ./secrets-sync convert - --query-vault > config.yaml
+
 # Query Vault for actual field names (recommended)
 export VAULT_ADDR=https://vault.example.com:8443
 export VAULT_TOKEN=your-token
