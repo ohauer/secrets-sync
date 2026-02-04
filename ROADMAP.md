@@ -168,8 +168,8 @@ Create a production-ready, secure, and lightweight sidecar container for managin
 - [ ] Secret rotation hooks (execute command on change) - Deferred to v1.2.0
 - [ ] Binary secret support (non-text files) - Deferred to v1.2.0
 
-**Breaking Changes**:
-- Configuration structure changed: `kvVersion` and `mountPath` moved from `secretStore` to per-secret configuration
+**Configuration Changes**:
+- `kvVersion` and `mountPath` moved from `secretStore` to per-secret configuration
 - Field `path` renamed to `key` in secret configuration
 
 ---
