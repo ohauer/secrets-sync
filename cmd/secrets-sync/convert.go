@@ -257,8 +257,10 @@ func convertSingleSecret(es ExternalSecret, sourceFile string, cfg ConvertConfig
 		} else if len(fields) > 0 {
 			// Use queried fields from Vault
 			for _, field := range fields {
-				// Use index syntax for fields with hyphens (Go template limitation)
-				if strings.Contains(field, "-") {
+				// Use index syntax for fields with special characters (Go template limitation)
+				// - Fields starting with dot (e.g., .dockerconfigjson)
+				// - Fields containing hyphens (e.g., jenkins-admin-password)
+				if strings.HasPrefix(field, ".") || strings.Contains(field, "-") {
 					fmt.Printf("%s        %s: '{{ index . %q }}'\n", commentPrefix, field, field)
 				} else {
 					fmt.Printf("%s        %s: '{{ .%s }}'\n", commentPrefix, field, field)
