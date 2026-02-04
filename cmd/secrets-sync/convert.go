@@ -243,7 +243,8 @@ func convertSingleSecret(es ExternalSecret, sourceFile string, cfg ConvertConfig
 				fields = queriedFields
 				fmt.Printf("    # Fields queried from Vault\n")
 			} else {
-				fmt.Printf("    # Note: Failed to query Vault (%v), using fallback\n", err)
+				fmt.Fprintf(os.Stderr, "Warning: Failed to query %s/%s: %v\n", mountPath, key, err)
+				fmt.Printf("    # WARNING: Failed to query Vault (permission denied?), using fallback\n")
 			}
 		}
 
