@@ -87,14 +87,12 @@ func queryVaultFields(mountPath, key, vaultAddr, vaultToken string) ([]string, e
 		return nil, fmt.Errorf("vault address and token required")
 	}
 
-	// Use vault CLI to query field names
+	// Use direct API call to avoid mount metadata query (which requires additional permissions)
+	// Assume KV v2 (most common) - path is: mountPath/data/key
+	apiPath := fmt.Sprintf("%s/data/%s", mountPath, key)
 	cmd := exec.Command("sh", "-c",
-		fmt.Sprintf("vault kv get -format=json %s/%s 2>/dev/null | jq -r '.data.data | keys[]' 2>/dev/null",
-			mountPath, key))
-	cmd.Env = append(os.Environ(),
-		"VAULT_ADDR="+vaultAddr,
-		"VAULT_TOKEN="+vaultToken,
-	)
+		fmt.Sprintf("curl -s -H 'X-Vault-Token: %s' %s/v1/%s 2>/dev/null | jq -r '.data.data | keys[]' 2>/dev/null",
+			vaultToken, vaultAddr, apiPath))
 
 	output, err := cmd.Output()
 	if err != nil {
