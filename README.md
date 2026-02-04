@@ -121,11 +121,14 @@ CONFIG_FILE=custom-config.yaml ./secrets-sync validate
 
 #### Convert from external-secrets-operator
 
-Convert ExternalSecret resources to docker-secrets format:
+Convert ExternalSecret resources to docker-secrets format (supports both YAML and JSON):
 
 ```bash
 # Basic conversion (uses fallback for unknown fields)
 ./secrets-sync convert external-secret.yaml > config.yaml
+
+# Works with JSON too
+./secrets-sync convert external-secret.json > config.yaml
 
 # Query Vault for actual field names (recommended)
 export VAULT_ADDR=https://vault.example.com:8443
@@ -138,14 +141,15 @@ export VAULT_ROLE_ID=your-role-id
 export VAULT_SECRET_ID=your-secret-id
 ./secrets-sync convert external-secret.yaml --query-vault > config.yaml
 
-# Convert multiple files
-./secrets-sync convert file1.yaml file2.yaml --query-vault > config.yaml
+# Convert multiple files (YAML or JSON)
+./secrets-sync convert file1.yaml file2.json --query-vault > config.yaml
 
 # Specify mount path manually
 ./secrets-sync convert external-secret.yaml --mount-path devops > config.yaml
 ```
 
 The convert command:
+- Supports YAML and JSON formats
 - Supports single ExternalSecret, Kubernetes List, and multi-document YAML formats
 - Auto-detects mount paths from secret keys
 - Queries Vault for actual field names when `--query-vault` is used
