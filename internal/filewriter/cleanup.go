@@ -22,7 +22,7 @@ func CleanupOrphanedTempFiles(outputDirs []string, logger *zap.Logger) error {
 		}
 
 		// Find all .tmp files in directory
-		pattern := filepath.Join(dir, "*.tmp")
+		pattern := filepath.Join(dir, "*.tmp.*")
 		matches, err := filepath.Glob(pattern)
 		if err != nil {
 			logger.Warn("failed to glob temp files",

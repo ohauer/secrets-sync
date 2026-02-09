@@ -1,6 +1,7 @@
 package filewriter
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -107,8 +108,10 @@ func TestWriteFile_Atomic(t *testing.T) {
 		t.Errorf("expected 'updated', got '%s'", string(data))
 	}
 
-	tmpFile := filePath + ".tmp"
-	if _, err := os.Stat(tmpFile); !os.IsNotExist(err) {
+	// Check no .tmp.* files left behind
+	tmpPattern := filePath + ".tmp.*"
+	matches, _ := filepath.Glob(tmpPattern)
+	if len(matches) > 0 {
 		t.Error("temp file was not cleaned up")
 	}
 }
@@ -173,6 +176,36 @@ func TestWriteFile_RejectsLargeContent(t *testing.T) {
 	}
 	if !contains(err.Error(), "exceeds maximum") {
 		t.Errorf("expected size error, got: %v", err)
+	}
+}
+
+func TestWriteFile_RandomTempNames(t *testing.T) {
+	tmpDir := t.TempDir()
+	filePath := filepath.Join(tmpDir, "test.txt")
+
+	writer := NewWriter()
+	config := FileConfig{
+		Path:  filePath,
+		Mode:  0644,
+		Owner: -1,
+		Group: -1,
+	}
+
+	// Write multiple times and verify no temp files remain
+	for i := 0; i < 5; i++ {
+		if err := writer.WriteFile(config, fmt.Sprintf("content-%d", i)); err != nil {
+			t.Fatalf("write %d failed: %v", i, err)
+		}
+	}
+
+	// Check no .tmp.* files left behind
+	pattern := filepath.Join(tmpDir, "*.tmp.*")
+	matches, err := filepath.Glob(pattern)
+	if err != nil {
+		t.Fatalf("glob failed: %v", err)
+	}
+	if len(matches) > 0 {
+		t.Errorf("found %d orphaned temp files: %v", len(matches), matches)
 	}
 }
 

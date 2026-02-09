@@ -1,6 +1,7 @@
 package filewriter
 
 import (
+	"crypto/rand"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -51,7 +52,7 @@ func (w *Writer) WriteFile(config FileConfig, content string) error {
 		return err
 	}
 
-	tmpFile := config.Path + ".tmp"
+	tmpFile := config.Path + ".tmp." + randomString(8)
 
 	if err := os.WriteFile(tmpFile, []byte(content), config.Mode); err != nil {
 		return fmt.Errorf("failed to write temp file: %w", err)
@@ -208,3 +209,18 @@ func GetFileInfo(path string) (os.FileMode, int, int, error) {
 
 	return info.Mode(), int(stat.Uid), int(stat.Gid), nil
 }
+
+// randomString generates a random string of length n for temp file names
+func randomString(n int) string {
+	const letters = "abcdefghijklmnopqrstuvwxyz0123456789"
+	b := make([]byte, n)
+	if _, err := rand.Read(b); err != nil {
+		// Fallback to timestamp if random fails
+		return fmt.Sprintf("%d", os.Getpid())
+	}
+	for i := range b {
+		b[i] = letters[b[i]%byte(len(letters))]
+	}
+	return string(b)
+}
+
