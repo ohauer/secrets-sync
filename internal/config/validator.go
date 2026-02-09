@@ -5,6 +5,8 @@ import (
 	"net/url"
 	"os"
 	"strings"
+
+	"github.com/ohauer/docker-secrets/internal/filewriter"
 )
 
 // Validate checks if the configuration is valid
@@ -167,8 +169,28 @@ func validateFile(file *File) error {
 		return fmt.Errorf("path is required")
 	}
 
+	// Set default mode if empty
 	if file.Mode == "" {
 		file.Mode = "0600"
+	}
+
+	// Validate mode is valid and secure
+	if _, err := filewriter.ParseMode(file.Mode); err != nil {
+		return fmt.Errorf("invalid mode '%s': %w", file.Mode, err)
+	}
+
+	// Validate owner if specified
+	if file.Owner != "" {
+		if _, err := filewriter.ParseOwner(file.Owner); err != nil {
+			return fmt.Errorf("invalid owner '%s': %w", file.Owner, err)
+		}
+	}
+
+	// Validate group if specified
+	if file.Group != "" {
+		if _, err := filewriter.ParseOwner(file.Group); err != nil {
+			return fmt.Errorf("invalid group '%s': %w", file.Group, err)
+		}
 	}
 
 	return nil
