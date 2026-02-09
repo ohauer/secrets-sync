@@ -1,17 +1,29 @@
 # Project Roadmap - Docker Secrets Sidecar
 
-## ✅ PROJECT COMPLETED - 2026-02-01
+## ✅ v0.1.0 RELEASED - 2026-02-09
 
-**Current Version**: v1.0.0
-**Status**: Production Ready
-**All Milestones**: COMPLETED
+**Current Version**: v0.1.0
+**Status**: Production Ready with Systemd Support
+**All Core Milestones**: COMPLETED
 
 ### Quick Stats
-- **Total Tasks**: 17/17 completed (100%)
-- **Test Coverage**: 60+ tests, all passing
+- **Total Tasks**: 17/17 core tasks completed (100%)
+- **Security Hardening**: Complete (fuzzing, path validation, resource limits)
+- **Systemd Support**: Complete (service, man page, install scripts)
+- **Test Coverage**: 60+ tests + 5 fuzz tests, all passing
 - **Container Image**: <20MB (FROM scratch)
-- **Documentation**: Complete (README, guides, examples)
-- **Timeline**: Completed in 1 day
+- **Documentation**: Complete (README, guides, man page, examples)
+
+### Recent Additions (v0.1.0)
+- ✅ Systemd service support with security hardening
+- ✅ SIGHUP signal handling for zero-downtime reload
+- ✅ Comprehensive security hardening (TOCTOU prevention, symlink rejection)
+- ✅ Fuzzing tests for input validation
+- ✅ OS-aware path length limits
+- ✅ Resource limits (1MB secrets, 10MB responses)
+- ✅ Pre-commit hooks and GitHub Actions CI
+- ✅ Man page documentation
+- ✅ Duplicate path detection
 
 ---
 
@@ -124,27 +136,57 @@ Create a production-ready, secure, and lightweight sidecar container for managin
 
 ---
 
-## Release Plan
+## Release History
 
-### v1.0.0 - GA (COMPLETED - 2026-02-01) ✅
-**Focus**: Production release with full documentation
+### v0.1.0 - Production Release (2026-02-09) ✅
+**Focus**: Production-ready with systemd support and comprehensive security hardening
 
-**Features**: ✅ ALL IMPLEMENTED
-- Configuration from YAML with hot reload
+**Core Features**: ✅ ALL IMPLEMENTED
+- Configuration from YAML with hot reload (SIGHUP)
 - Token and AppRole authentication
 - Secret fetching with exponential backoff retry
 - Circuit breaker with configurable thresholds
 - Template engine for field mapping (external-secrets-operator style)
-- Atomic file writes with configurable permissions
+- Atomic file writes with random temp files (TOCTOU prevention)
 - Health checks and readiness probes (`isready` subcommand)
-- Prometheus metrics
+- Prometheus metrics (localhost-only by default)
 - Optional OpenTelemetry tracing
-- Graceful shutdown
+- Graceful shutdown and reload
 - Minimal container image (FROM scratch, <20MB)
-- Complete documentation
-- Example deployments (docker-compose, Vault/OpenBao dev environments)
+
+**Security Hardening**: ✅ COMPLETE
+- Random temp file names (TOCTOU attack prevention)
+- Symlink and device file rejection
+- Path validation (length limits, traversal prevention, Windows paths)
+- File type validation (only regular files)
+- Resource limits (1MB secrets, 10MB responses, 100 secrets max)
+- Orphaned temp file cleanup
+- Fuzzing tests for all input validation
+- OS-aware path length limits
+
+**Systemd Support**: ✅ COMPLETE
+- Systemd unit file with extensive security hardening
+- Installation and uninstallation scripts
+- Man page (secrets-sync.1)
+- SIGHUP reload support
+- Environment file template
+- Comprehensive deployment documentation
+
+**Code Quality**: ✅ COMPLETE
+- Pre-commit hooks (auto-fix whitespace, run tests)
+- GitHub Actions CI (enforce quality, auto-fix issues)
+- 60+ unit tests + 5 fuzz tests
+- Duplicate path detection
+
+**Documentation**: ✅ COMPLETE
+- Complete README with systemd instructions
+- Man page with full reference
+- Systemd deployment guide
+- Fuzzing guide
+- Configuration documentation
 - Troubleshooting guide
-- Dependency management (Dependabot, Renovate)
+- Example deployments
+
 
 **Target Audience**: Production use
 

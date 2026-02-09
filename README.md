@@ -220,7 +220,7 @@ services:
         condition: service_healthy
 
   secrets-sidecar:
-    image: docker-secrets:v1.0.0
+    image: docker-secrets:v0.1.0
     volumes:
       - secrets:/secrets
       - ./config.yaml:/config.yaml:ro
@@ -318,6 +318,25 @@ OTEL_EXPORTER_ENDPOINT=http://jaeger:4318
 - [Vault Development Environment](docker-compose.vault.yml)
 - [OpenBao Development Environment](docker-compose.openbao.yml)
 - [Example Configurations](examples/)
+
+## Documentation
+
+Complete documentation is available in the [docs/](docs/) directory:
+
+**User Guides:**
+- [Configuration Reference](docs/configuration.md)
+- [Environment Variables](docs/environment-variables.md)
+- [Systemd Deployment](docs/systemd-deployment.md)
+- [Troubleshooting](docs/troubleshooting.md)
+- [Fuzzing/Security Testing](docs/fuzzing.md)
+- [Man Page](docs/secrets-sync.1) - `man secrets-sync` after installation
+
+**Development:**
+- [Project Plan](docs/development/PLAN.md)
+- [Roadmap](docs/development/ROADMAP.md)
+- [Security Audit](docs/development/SECURITY_AUDIT.md)
+
+See [docs/README.md](docs/README.md) for complete documentation index.
 
 ## Troubleshooting
 
