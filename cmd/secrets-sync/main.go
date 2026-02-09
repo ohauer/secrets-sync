@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/ohauer/docker-secrets/internal/config"
+	"github.com/ohauer/docker-secrets/internal/filewriter"
 	"github.com/ohauer/docker-secrets/internal/health"
 	"github.com/ohauer/docker-secrets/internal/logger"
 	"github.com/ohauer/docker-secrets/internal/metrics"
@@ -326,6 +327,18 @@ func run() error {
 			tracingShutdown()
 			return nil
 		})
+	}
+
+	// Cleanup orphaned .tmp files from previous runs
+	var allFilePaths []string
+	for _, secret := range cfg.Secrets {
+		for _, file := range secret.Files {
+			allFilePaths = append(allFilePaths, file.Path)
+		}
+	}
+	outputDirs := filewriter.GetOutputDirectories(allFilePaths)
+	if err := filewriter.CleanupOrphanedTempFiles(outputDirs, logger.Get()); err != nil {
+		logger.Warn("failed to cleanup orphaned temp files", zap.Error(err))
 	}
 
 	logger.Info("docker secrets sync running, waiting for shutdown signal")

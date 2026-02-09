@@ -9,6 +9,11 @@ import (
 	"syscall"
 )
 
+const (
+	// MaxSecretSize is the maximum allowed size for secret content (1MB)
+	MaxSecretSize = 1 * 1024 * 1024
+)
+
 // FileConfig holds file writing configuration
 type FileConfig struct {
 	Path  string
@@ -27,6 +32,11 @@ func NewWriter() *Writer {
 
 // WriteFile writes content to a file atomically
 func (w *Writer) WriteFile(config FileConfig, content string) error {
+	// Validate content size
+	if len(content) > MaxSecretSize {
+		return fmt.Errorf("content size %d exceeds maximum allowed size %d", len(content), MaxSecretSize)
+	}
+
 	// Validate path for security
 	if err := validatePath(config.Path); err != nil {
 		return fmt.Errorf("invalid path: %w", err)

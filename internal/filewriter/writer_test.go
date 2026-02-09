@@ -152,6 +152,30 @@ func contains(s, substr string) bool {
 	return false
 }
 
+func TestWriteFile_RejectsLargeContent(t *testing.T) {
+	tmpDir := t.TempDir()
+	filePath := filepath.Join(tmpDir, "large.txt")
+
+	writer := NewWriter()
+	config := FileConfig{
+		Path:  filePath,
+		Mode:  0644,
+		Owner: -1,
+		Group: -1,
+	}
+
+	// Create content larger than MaxSecretSize
+	largeContent := string(make([]byte, MaxSecretSize+1))
+
+	err := writer.WriteFile(config, largeContent)
+	if err == nil {
+		t.Fatal("expected error for large content, got nil")
+	}
+	if !contains(err.Error(), "exceeds maximum") {
+		t.Errorf("expected size error, got: %v", err)
+	}
+}
+
 func TestParseMode_Valid(t *testing.T) {
 	tests := []struct {
 		input    string
