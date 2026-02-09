@@ -326,6 +326,9 @@ See [docs/troubleshooting.md](docs/troubleshooting.md) for common issues and sol
 ## Development
 
 ```bash
+# Install git hooks (recommended)
+./scripts/install-hooks.sh
+
 # Run tests
 make test
 
@@ -341,6 +344,12 @@ make build
 # Build Docker image
 make docker-build
 ```
+
+The pre-commit hook automatically:
+- Fixes trailing whitespace
+- Runs `go fmt`
+- Runs linter
+- Runs tests
 
 See [Fuzzing Guide](docs/fuzzing.md) for security testing.
 
