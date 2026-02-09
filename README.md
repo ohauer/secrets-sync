@@ -71,6 +71,29 @@ make docker-build
 ./build.sh
 ```
 
+### Install as Systemd Service
+
+For Linux systems, you can install secrets-sync as a systemd service:
+
+```bash
+# Automated installation
+sudo make install-systemd
+
+# Manual installation
+make build
+sudo cp bin/secrets-sync /usr/local/bin/
+sudo mkdir -p /etc/secrets-sync
+secrets-sync init | sudo tee /etc/secrets-sync/config.yaml
+sudo cp examples/systemd/secrets-sync.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now secrets-sync
+
+# Reload configuration without restart
+sudo systemctl reload secrets-sync
+```
+
+See [Systemd Deployment Guide](docs/systemd-deployment.md) for detailed instructions.
+
 ## Usage
 
 ### Command Line Interface
@@ -303,8 +326,14 @@ See [docs/troubleshooting.md](docs/troubleshooting.md) for common issues and sol
 ## Development
 
 ```bash
+# Install git hooks (recommended)
+./scripts/install-hooks.sh
+
 # Run tests
 make test
+
+# Run fuzz tests
+make fuzz
 
 # Run linter
 make lint
@@ -315,6 +344,19 @@ make build
 # Build Docker image
 make docker-build
 ```
+
+The pre-commit hook automatically:
+- Fixes trailing whitespace
+- Runs `go fmt`
+- Runs linter
+- Runs tests
+
+GitHub Actions CI:
+- Enforces code quality on PRs
+- Auto-fixes trailing whitespace
+- Blocks merge if tests fail
+
+See [Fuzzing Guide](docs/fuzzing.md) for security testing.
 
 ## Security
 

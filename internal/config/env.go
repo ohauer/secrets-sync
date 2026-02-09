@@ -23,7 +23,9 @@ type EnvConfig struct {
 	CircuitBreakerInterval time.Duration
 	CircuitBreakerTimeout  time.Duration
 	LogLevel               string
-	HTTPPort               int
+	MetricsAddr            string
+	MetricsPort            int
+	EnableMetrics          bool
 	StatusFile             string
 	EnableTracing          bool
 	OTELExporterEndpoint   string
@@ -50,7 +52,9 @@ func LoadEnvConfig() *EnvConfig {
 		CircuitBreakerInterval: getEnvDuration("CIRCUIT_BREAKER_INTERVAL", 60*time.Second),
 		CircuitBreakerTimeout:  getEnvDuration("CIRCUIT_BREAKER_TIMEOUT", 30*time.Second),
 		LogLevel:               getEnv("LOG_LEVEL", "info"),
-		HTTPPort:               getEnvInt("HTTP_PORT", 8080),
+		MetricsAddr:            getEnv("METRICS_ADDR", "127.0.0.1"),
+		MetricsPort:            getEnvIntRange("METRICS_PORT", 8080, 1025, 65535),
+		EnableMetrics:          getEnvBool("ENABLE_METRICS", true),
 		StatusFile:             getEnv("STATUS_FILE", "/tmp/.ready-state"),
 		EnableTracing:          getEnvBool("ENABLE_TRACING", false),
 		OTELExporterEndpoint:   getEnv("OTEL_EXPORTER_ENDPOINT", ""),
@@ -83,6 +87,18 @@ func getEnvInt(key string, defaultValue int) int {
 		if err == nil {
 			return i
 		}
+	}
+	return defaultValue
+}
+
+func getEnvIntRange(key string, defaultValue, minValue, maxValue int) int {
+	if value := os.Getenv(key); value != "" {
+		i, err := strconv.Atoi(value)
+		if err == nil && i >= minValue && i <= maxValue {
+			return i
+		}
+		// Return -1 to indicate invalid value
+		return -1
 	}
 	return defaultValue
 }

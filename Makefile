@@ -1,4 +1,4 @@
-.PHONY: help all build test lint clean
+.PHONY: help all build test fuzz lint clean install-systemd uninstall-systemd
 
 BINARY_NAME=secrets-sync
 BUILD_DIR=bin
@@ -14,19 +14,22 @@ LDFLAGS=-ldflags "-X main.Version=$(VERSION) -X main.GitCommit=$(GIT_COMMIT) -X 
 
 help:
 	@echo "Available targets:"
-	@echo "  all           - Run lint, test, and build"
-	@echo "  build         - Build the binary"
-	@echo "  build-static  - Build static binary for container"
-	@echo "  test          - Run tests"
-	@echo "  coverage      - Generate coverage report"
-	@echo "  lint          - Run linter"
-	@echo "  fmt           - Format code"
-	@echo "  vet           - Run go vet"
-	@echo "  clean         - Remove build artifacts"
-	@echo "  run           - Run the application"
-	@echo "  docker-build  - Build Docker image"
-	@echo "  docker-run    - Run Docker container"
-	@echo "  docker-test   - Test Docker container"
+	@echo "  all              - Run lint, test, and build"
+	@echo "  build            - Build the binary"
+	@echo "  build-static     - Build static binary for container"
+	@echo "  test             - Run tests"
+	@echo "  fuzz             - Run fuzz tests (10s per test)"
+	@echo "  coverage         - Generate coverage report"
+	@echo "  lint             - Run linter"
+	@echo "  fmt              - Format code"
+	@echo "  vet              - Run go vet"
+	@echo "  clean            - Remove build artifacts"
+	@echo "  run              - Run the application"
+	@echo "  docker-build     - Build Docker image"
+	@echo "  docker-run       - Run Docker container"
+	@echo "  docker-test      - Test Docker container"
+	@echo "  install-systemd  - Install as systemd service (requires root)"
+	@echo "  uninstall-systemd - Uninstall systemd service (requires root)"
 
 all: lint test build
 
@@ -40,6 +43,15 @@ build-static:
 
 test:
 	$(GO) test -v -race -coverprofile=coverage.out ./...
+
+fuzz:
+	@echo "Running fuzz tests (10s each)..."
+	$(GO) test -fuzz=FuzzValidatePath -fuzztime=10s ./internal/filewriter
+	$(GO) test -fuzz=FuzzValidateMode -fuzztime=10s ./internal/filewriter
+	$(GO) test -fuzz=FuzzRender -fuzztime=10s ./internal/template
+	$(GO) test -fuzz=FuzzConfigLoad -fuzztime=10s ./internal/config
+	$(GO) test -fuzz=FuzzValidateFilePath -fuzztime=10s ./internal/config
+	@echo "All fuzz tests passed!"
 
 coverage: test
 	$(GO) tool cover -html=coverage.out -o coverage.html
@@ -71,3 +83,19 @@ docker-run:
 docker-test:
 	docker build -t docker-secrets:test .
 	docker run --rm docker-secrets:test isready; echo "Exit code: $$?"
+
+install-systemd: build
+	@echo "Installing secrets-sync as systemd service..."
+	@if [ "$$(id -u)" -ne 0 ]; then \
+		echo "Error: This target must be run as root (use sudo make install-systemd)"; \
+		exit 1; \
+	fi
+	@./scripts/install-systemd.sh
+
+uninstall-systemd:
+	@echo "Uninstalling secrets-sync systemd service..."
+	@if [ "$$(id -u)" -ne 0 ]; then \
+		echo "Error: This target must be run as root (use sudo make uninstall-systemd)"; \
+		exit 1; \
+	fi
+	@./scripts/uninstall-systemd.sh

@@ -128,7 +128,7 @@ func detectMountPath(key string) string {
 func convertExternalSecret(inputFile string, cfg ConvertConfig) error {
 	var data []byte
 	var err error
-	
+
 	// Support stdin with "-"
 	if inputFile == "-" {
 		data, err = io.ReadAll(os.Stdin)
@@ -144,11 +144,11 @@ func convertExternalSecret(inputFile string, cfg ConvertConfig) error {
 
 	// Try to parse as a List first
 	var list struct {
-		APIVersion string `yaml:"apiVersion"`
-		Kind       string `yaml:"kind"`
+		APIVersion string      `yaml:"apiVersion"`
+		Kind       string      `yaml:"kind"`
 		Items      []yaml.Node `yaml:"items"`
 	}
-	
+
 	if err := yaml.Unmarshal(data, &list); err == nil && list.Kind == "List" {
 		// Handle Kubernetes List with multiple ExternalSecrets
 		sourceFile := inputFile
@@ -232,7 +232,7 @@ func convertSingleSecret(es ExternalSecret, sourceFile string, cfg ConvertConfig
 	}
 
 	fmt.Printf("\n# Converted from: %s (secret: %s)\n", sourceFile, secretName)
-	
+
 	// Handle dataFrom.extract (pulls all fields)
 	if len(es.Spec.DataFrom) > 0 {
 		// Try to query vault for actual field names
@@ -455,7 +455,7 @@ func runConvert(args []string) int {
 	if cfg.QueryVault && cfg.VaultAddr != "" {
 		fmt.Println("secretStore:")
 		fmt.Printf("  address: %q\n", cfg.VaultAddr)
-		
+
 		// Use AppRole if role_id/secret_id were provided, otherwise token
 		if cfg.VaultRoleID != "" && cfg.VaultSecretID != "" {
 			fmt.Println("  authMethod: \"approle\"")

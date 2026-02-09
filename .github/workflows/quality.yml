@@ -1,0 +1,62 @@
+name: Code Quality
+
+on:
+  pull_request:
+    branches: [ main, develop ]
+  push:
+    branches: [ main, develop ]
+
+jobs:
+  quality:
+    name: Code Quality Checks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+
+      - name: Check for trailing whitespace
+        run: |
+          echo "Checking for trailing whitespace..."
+          if git grep -n '[[:space:]]$' -- '*.go' '*.md' '*.yaml' '*.yml' '*.sh'; then
+            echo "❌ Error: Trailing whitespace found in the above files"
+            echo "Run: find . -type f \( -name '*.go' -o -name '*.md' \) -exec sed -i 's/[[:space:]]*\$//' {} +"
+            exit 1
+          fi
+          echo "✓ No trailing whitespace found"
+
+      - name: Check go fmt
+        run: |
+          echo "Checking go fmt..."
+          if [ -n "$(gofmt -l .)" ]; then
+            echo "❌ Error: The following files are not formatted:"
+            gofmt -l .
+            echo "Run: go fmt ./..."
+            exit 1
+          fi
+          echo "✓ All files are properly formatted"
+
+      - name: Install golangci-lint
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin
+          echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
+
+      - name: Run linter
+        run: |
+          echo "Running golangci-lint..."
+          golangci-lint run ./...
+
+      - name: Run tests
+        run: |
+          echo "Running tests..."
+          go test -v -race -coverprofile=coverage.out ./...
+
+      - name: Upload coverage
+        uses: codecov/codecov-action@v4
+        with:
+          file: ./coverage.out
+          fail_ci_if_error: false

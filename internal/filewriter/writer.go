@@ -1,11 +1,18 @@
 package filewriter
 
 import (
+	"crypto/rand"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"syscall"
+)
+
+const (
+	// MaxSecretSize is the maximum allowed size for secret content (1MB)
+	MaxSecretSize = 1 * 1024 * 1024
 )
 
 // FileConfig holds file writing configuration
@@ -26,11 +33,26 @@ func NewWriter() *Writer {
 
 // WriteFile writes content to a file atomically
 func (w *Writer) WriteFile(config FileConfig, content string) error {
+	// Validate content size
+	if len(content) > MaxSecretSize {
+		return fmt.Errorf("content size %d exceeds maximum allowed size %d", len(content), MaxSecretSize)
+	}
+
+	// Validate path for security
+	if err := validatePath(config.Path); err != nil {
+		return fmt.Errorf("invalid path: %w", err)
+	}
+
+	// Check if path exists and validate it's not a symlink or special file
+	if err := validateFileType(config.Path); err != nil {
+		return fmt.Errorf("invalid file type: %w", err)
+	}
+
 	if err := w.ensureDir(filepath.Dir(config.Path)); err != nil {
 		return err
 	}
 
-	tmpFile := config.Path + ".tmp"
+	tmpFile := config.Path + ".tmp." + randomString(8)
 
 	if err := os.WriteFile(tmpFile, []byte(content), config.Mode); err != nil {
 		return fmt.Errorf("failed to write temp file: %w", err)
@@ -59,6 +81,63 @@ func (w *Writer) WriteFile(config FileConfig, content string) error {
 	return nil
 }
 
+// validatePath checks for path traversal attempts
+func validatePath(path string) error {
+	if path == "" {
+		return fmt.Errorf("path cannot be empty")
+	}
+
+	// Check path length against OS limit
+	if len(path) > MaxPathLen {
+		return fmt.Errorf("path length %d exceeds maximum %d for this OS", len(path), MaxPathLen)
+	}
+
+	// Reject Windows extended paths and UNC paths
+	if strings.HasPrefix(path, `\\?\`) || strings.HasPrefix(path, `\\.\`) {
+		return fmt.Errorf("extended paths (\\\\?\\) and device paths (\\\\.\\ ) are not allowed")
+	}
+	if strings.HasPrefix(path, `\\`) {
+		return fmt.Errorf("UNC paths (\\\\server\\share) are not allowed, mount the share locally")
+	}
+
+	// Ensure path is absolute for security
+	if !filepath.IsAbs(path) {
+		return fmt.Errorf("path must be absolute")
+	}
+
+	// Check for path traversal attempts before cleaning
+	if strings.Contains(path, "..") {
+		return fmt.Errorf("path contains '..' which is not allowed")
+	}
+
+	return nil
+}
+
+// validateFileType ensures the path is not a symlink or special file
+func validateFileType(path string) error {
+	// Check if file exists
+	info, err := os.Lstat(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			// File doesn't exist yet, that's OK
+			return nil
+		}
+		return fmt.Errorf("failed to stat file: %w", err)
+	}
+
+	// Reject symlinks
+	if info.Mode()&os.ModeSymlink != 0 {
+		return fmt.Errorf("symbolic links are not allowed")
+	}
+
+	// Reject special files (devices, pipes, sockets)
+	if !info.Mode().IsRegular() && !info.Mode().IsDir() {
+		return fmt.Errorf("only regular files are allowed, got: %s", info.Mode().Type())
+	}
+
+	return nil
+}
+
 func (w *Writer) ensureDir(dir string) error {
 	if dir == "" || dir == "." {
 		return nil
@@ -82,7 +161,37 @@ func ParseMode(mode string) (os.FileMode, error) {
 		return 0, fmt.Errorf("invalid mode: %w", err)
 	}
 
-	return os.FileMode(m), nil
+	fileMode := os.FileMode(m)
+
+	// Validate mode is not too permissive
+	if err := validateMode(fileMode); err != nil {
+		return 0, err
+	}
+
+	return fileMode, nil
+}
+
+// validateMode ensures file mode is not overly permissive
+func validateMode(mode os.FileMode) error {
+	// Extract permission bits (ignore file type bits)
+	perm := mode & os.ModePerm
+
+	// Check if world-writable (other write bit set)
+	if perm&0002 != 0 {
+		return fmt.Errorf("world-writable permissions (0%o) are not allowed", perm)
+	}
+
+	// Check if group-writable and world-readable (too permissive for secrets)
+	if perm&0020 != 0 && perm&0004 != 0 {
+		return fmt.Errorf("group-writable with world-readable (0%o) is too permissive", perm)
+	}
+
+	// Warn if more permissive than 0644
+	if perm > 0644 {
+		return fmt.Errorf("permissions (0%o) are too permissive, maximum is 0644", perm)
+	}
+
+	return nil
 }
 
 // ParseOwner parses owner/group string to int
@@ -112,4 +221,18 @@ func GetFileInfo(path string) (os.FileMode, int, int, error) {
 	}
 
 	return info.Mode(), int(stat.Uid), int(stat.Gid), nil
+}
+
+// randomString generates a random string of length n for temp file names
+func randomString(n int) string {
+	const letters = "abcdefghijklmnopqrstuvwxyz0123456789"
+	b := make([]byte, n)
+	if _, err := rand.Read(b); err != nil {
+		// Fallback to timestamp if random fails
+		return fmt.Sprintf("%d", os.Getpid())
+	}
+	for i := range b {
+		b[i] = letters[b[i]%byte(len(letters))]
+	}
+	return string(b)
 }

@@ -4,9 +4,11 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/ohauer/docker-secrets/internal/config"
+	"github.com/ohauer/docker-secrets/internal/filewriter"
 	"github.com/ohauer/docker-secrets/internal/health"
 	"github.com/ohauer/docker-secrets/internal/logger"
 	"github.com/ohauer/docker-secrets/internal/metrics"
@@ -194,6 +196,15 @@ func run() error {
 		zap.String("auth_method", cfg.SecretStore.AuthMethod),
 	)
 
+	// Warn if using HTTP (insecure)
+	if strings.HasPrefix(cfg.SecretStore.Address, "http://") &&
+		!strings.Contains(cfg.SecretStore.Address, "localhost") &&
+		!strings.Contains(cfg.SecretStore.Address, "127.0.0.1") {
+		logger.Warn("using insecure HTTP connection to Vault - use HTTPS in production",
+			zap.String("address", cfg.SecretStore.Address),
+		)
+	}
+
 	// Create syncer
 	retryConfig := vault.RetryConfig{
 		InitialBackoff: envCfg.InitialBackoff,
@@ -207,13 +218,29 @@ func run() error {
 
 	// Set up health status
 	status := health.NewStatus(envCfg.StatusFile)
-	healthServer := health.NewServer(status, envCfg.HTTPPort)
 
-	if err := healthServer.Start(); err != nil {
-		return err
+	// Validate metrics port
+	if envCfg.MetricsPort < 1025 || envCfg.MetricsPort > 65535 {
+		logger.Error("invalid METRICS_PORT: must be between 1025 and 65535, disabling metrics",
+			zap.Int("port", envCfg.MetricsPort),
+		)
+		envCfg.EnableMetrics = false
 	}
 
-	logger.Info("health server started", zap.Int("port", envCfg.HTTPPort))
+	// Start metrics server if enabled
+	var healthServer *health.Server
+	if envCfg.EnableMetrics {
+		healthServer = health.NewServer(status, envCfg.MetricsAddr, envCfg.MetricsPort)
+		if err := healthServer.Start(); err != nil {
+			return err
+		}
+		logger.Info("metrics server started",
+			zap.String("addr", envCfg.MetricsAddr),
+			zap.Int("port", envCfg.MetricsPort),
+		)
+	} else {
+		logger.Info("metrics server disabled")
+	}
 
 	// Set metrics
 	metrics.SetSecretsConfigured(len(cfg.Secrets))
@@ -288,10 +315,12 @@ func run() error {
 		scheduler.Stop()
 		return nil
 	})
-	shutdownHandler.Register(func() error {
-		logger.Info("shutting down health server")
-		return healthServer.Stop()
-	})
+	if healthServer != nil {
+		shutdownHandler.Register(func() error {
+			logger.Info("shutting down metrics server")
+			return healthServer.Stop()
+		})
+	}
 	if tracingShutdown != nil {
 		shutdownHandler.Register(func() error {
 			logger.Info("shutting down tracing")
@@ -300,20 +329,72 @@ func run() error {
 		})
 	}
 
-	logger.Info("docker secrets sync running, waiting for shutdown signal")
-
-	// Wait for shutdown signal
-	<-shutdownHandler.Wait()
-
-	logger.Info("shutdown signal received, stopping gracefully")
-
-	if err := shutdownHandler.Shutdown(); err != nil {
-		logger.Error("shutdown error", zap.Error(err))
-		return err
+	// Cleanup orphaned .tmp files from previous runs
+	var allFilePaths []string
+	for _, secret := range cfg.Secrets {
+		for _, file := range secret.Files {
+			allFilePaths = append(allFilePaths, file.Path)
+		}
+	}
+	outputDirs := filewriter.GetOutputDirectories(allFilePaths)
+	if err := filewriter.CleanupOrphanedTempFiles(outputDirs, logger.Get()); err != nil {
+		logger.Warn("failed to cleanup orphaned temp files", zap.Error(err))
 	}
 
-	logger.Info("shutdown complete")
-	return nil
+	logger.Info("docker secrets sync running, waiting for shutdown signal")
+
+	// Wait for signals
+	for {
+		select {
+		case <-shutdownHandler.Wait():
+			logger.Info("shutdown signal received, stopping gracefully")
+
+			if err := shutdownHandler.Shutdown(); err != nil {
+				logger.Error("shutdown error", zap.Error(err))
+				return err
+			}
+
+			logger.Info("shutdown complete")
+			return nil
+
+		case <-shutdownHandler.WaitReload():
+			logger.Info("reload signal (SIGHUP) received, reloading configuration")
+
+			// Reload configuration
+			newCfg, err := config.Load(configPath)
+			if err != nil {
+				logger.Error("failed to reload configuration", zap.Error(err))
+				continue
+			}
+
+			// Validate new configuration
+			if err := config.Validate(newCfg); err != nil {
+				logger.Error("invalid configuration, keeping current config", zap.Error(err))
+				continue
+			}
+
+			// Stop current scheduler
+			scheduler.Stop()
+
+			// Update configuration
+			cfg = newCfg
+			logger.Info("configuration reloaded",
+				zap.Int("secret_count", len(cfg.Secrets)),
+			)
+
+			// Restart scheduler with new secrets
+			scheduler = syncer.NewScheduler(secretSyncer)
+			for _, secret := range cfg.Secrets {
+				scheduler.AddSecret(cfg, secret)
+				logger.Info("secret sync restarted",
+					zap.String("name", secret.Name),
+					zap.Duration("refresh_interval", secret.RefreshInterval),
+				)
+			}
+
+			metrics.SetSecretsConfigured(len(cfg.Secrets))
+		}
+	}
 }
 
 func isReady() int {
