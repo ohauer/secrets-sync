@@ -220,7 +220,7 @@ services:
         condition: service_healthy
 
   secrets-sidecar:
-    image: docker-secrets:v1.0.0
+    image: docker-secrets:v0.1.0
     volumes:
       - secrets:/secrets
       - ./config.yaml:/config.yaml:ro

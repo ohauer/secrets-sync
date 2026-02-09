@@ -1,10 +1,10 @@
-# Docker Secrets Sidecar v1.0.0 - Final Report
+# Docker Secrets Sidecar v0.1.0 - Final Report
 
 ## Project Status: ✅ PRODUCTION READY
 
-**Completion Date**: 2026-02-01
-**Version**: v1.0.0
-**Status**: All milestones completed, tested, and security audited
+**Completion Date**: 2026-02-09
+**Version**: v0.1.0
+**Status**: All milestones completed, tested, security hardened, and systemd support added
 
 ---
 

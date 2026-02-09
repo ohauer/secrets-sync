@@ -1,6 +1,6 @@
 # Security Audit Report
 
-## Docker Secrets Sidecar v1.0.0
+## Docker Secrets Sidecar v0.1.0
 
 **Audit Date**: 2026-02-01
 **Auditor**: Automated Security Review
