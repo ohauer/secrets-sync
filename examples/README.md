@@ -37,7 +37,7 @@ make docker-build -C ..
 docker compose -f docker-compose.sidecar.yml up
 
 # This starts:
-# - Vault (on port 8202)
+# - Vault (internal: 8200, external: 8202)
 # - Secrets sidecar (syncs secrets)
 # - Nginx app (uses synced secrets)
 ```
@@ -52,6 +52,21 @@ All generated files are stored in `examples/.work/`:
 - `.work/openbao-credentials.txt` - OpenBao credentials
 
 This directory is gitignored to keep the repository clean.
+
+## Port Reference
+
+Different docker-compose files use different ports to avoid conflicts:
+
+| Service | Docker Compose File | Internal Port | External Port | Access From Host |
+|---------|-------------------|---------------|---------------|------------------|
+| Vault (dev) | `docker-compose.vault.yml` | 8200 | 8200 | `http://localhost:8200` |
+| Vault (sidecar) | `docker-compose.sidecar.yml` | 8200 | 8202 | `http://localhost:8202` |
+| OpenBao | `docker-compose.openbao.yml` | 8200 | 8300 | `http://localhost:8300` |
+
+**When to use which port:**
+- **Inside container** (`docker exec`): Always use 8200
+- **From host machine**: Use the external port (8200, 8202, or 8300)
+- **Between containers**: Use service name and internal port (e.g., `http://vault:8200`)
 
 ## Files
 
@@ -69,13 +84,13 @@ This directory is gitignored to keep the repository clean.
 
 ## Sidecar Example Setup
 
-The docker-compose.sidecar.yml includes its own Vault instance on port 8202. To use it:
+The docker-compose.sidecar.yml includes its own Vault instance (internal port 8200, exposed as 8202). To use it:
 
 ```bash
 # Start services
 docker compose -f docker-compose.sidecar.yml up -d
 
-# Initialize Vault in the sidecar
+# Initialize Vault in the sidecar (use internal port 8200 with docker exec)
 docker exec -e VAULT_ADDR=http://127.0.0.1:8200 -e VAULT_TOKEN=dev-root-token vault-sidecar \
   vault kv put secret/common/tls/example-cert tlsCrt="cert-data" tlsKey="key-data"
 
@@ -91,6 +106,8 @@ docker compose -f docker-compose.sidecar.yml restart secrets-sidecar
 # Check logs
 docker logs -f secrets-sidecar
 ```
+
+**Note**: Use port 8200 with `docker exec` (inside container) or port 8202 from your host machine.
 
 ## OpenBao Alternative
 
