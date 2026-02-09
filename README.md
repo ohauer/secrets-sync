@@ -351,6 +351,11 @@ The pre-commit hook automatically:
 - Runs linter
 - Runs tests
 
+GitHub Actions CI:
+- Enforces code quality on PRs
+- Auto-fixes trailing whitespace
+- Blocks merge if tests fail
+
 See [Fuzzing Guide](docs/fuzzing.md) for security testing.
 
 ## Security
