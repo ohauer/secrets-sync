@@ -22,6 +22,7 @@ import (
 var configFile string
 
 func init() {
+	flag.Usage = printHelp // Override default help
 	flag.StringVar(&configFile, "config", "", "path to config file")
 	flag.StringVar(&configFile, "c", "", "path to config file (shorthand)")
 }
