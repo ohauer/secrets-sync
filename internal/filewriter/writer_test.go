@@ -113,6 +113,45 @@ func TestWriteFile_Atomic(t *testing.T) {
 	}
 }
 
+func TestWriteFile_RejectsSymlink(t *testing.T) {
+	tmpDir := t.TempDir()
+	targetFile := filepath.Join(tmpDir, "target.txt")
+	symlinkFile := filepath.Join(tmpDir, "symlink.txt")
+
+	// Create target file
+	_ = os.WriteFile(targetFile, []byte("target"), 0644)
+
+	// Create symlink
+	if err := os.Symlink(targetFile, symlinkFile); err != nil {
+		t.Skipf("cannot create symlink: %v", err)
+	}
+
+	writer := NewWriter()
+	config := FileConfig{
+		Path:  symlinkFile,
+		Mode:  0644,
+		Owner: -1,
+		Group: -1,
+	}
+
+	err := writer.WriteFile(config, "content")
+	if err == nil {
+		t.Fatal("expected error for symlink, got nil")
+	}
+	if !contains(err.Error(), "symbolic link") {
+		t.Errorf("expected symlink error, got: %v", err)
+	}
+}
+
+func contains(s, substr string) bool {
+	for i := 0; i <= len(s)-len(substr); i++ {
+		if s[i:i+len(substr)] == substr {
+			return true
+		}
+	}
+	return false
+}
+
 func TestParseMode_Valid(t *testing.T) {
 	tests := []struct {
 		input    string

@@ -24,6 +24,9 @@ func FuzzValidatePath(f *testing.F) {
 	f.Add("/tmp/test/../..")
 	f.Add("C:\\Windows\\System32")
 	f.Add("/tmp/\u202e/test")
+	f.Add("/dev/null")
+	f.Add("/dev/random")
+	f.Add("/proc/self/mem")
 
 	f.Fuzz(func(t *testing.T, path string) {
 		// Should not panic

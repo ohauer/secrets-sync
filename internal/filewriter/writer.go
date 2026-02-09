@@ -32,6 +32,11 @@ func (w *Writer) WriteFile(config FileConfig, content string) error {
 		return fmt.Errorf("invalid path: %w", err)
 	}
 
+	// Check if path exists and validate it's not a symlink or special file
+	if err := validateFileType(config.Path); err != nil {
+		return fmt.Errorf("invalid file type: %w", err)
+	}
+
 	if err := w.ensureDir(filepath.Dir(config.Path)); err != nil {
 		return err
 	}
@@ -79,6 +84,31 @@ func validatePath(path string) error {
 	// Check for path traversal attempts before cleaning
 	if strings.Contains(path, "..") {
 		return fmt.Errorf("path contains '..' which is not allowed")
+	}
+
+	return nil
+}
+
+// validateFileType ensures the path is not a symlink or special file
+func validateFileType(path string) error {
+	// Check if file exists
+	info, err := os.Lstat(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			// File doesn't exist yet, that's OK
+			return nil
+		}
+		return fmt.Errorf("failed to stat file: %w", err)
+	}
+
+	// Reject symlinks
+	if info.Mode()&os.ModeSymlink != 0 {
+		return fmt.Errorf("symbolic links are not allowed")
+	}
+
+	// Reject special files (devices, pipes, sockets)
+	if !info.Mode().IsRegular() && !info.Mode().IsDir() {
+		return fmt.Errorf("only regular files are allowed, got: %s", info.Mode().Type())
 	}
 
 	return nil

@@ -30,6 +30,8 @@ Fuzzing is an automated testing technique that provides random, malformed, or un
 - Newlines and control characters
 - Unicode attacks (right-to-left override)
 - Windows paths on Linux
+- Device files (`/dev/null`, `/dev/random`)
+- Symbolic links (rejected at runtime)
 - World-writable modes
 - Invalid octal values
 
@@ -129,6 +131,8 @@ For longer fuzzing in CI:
 
 Fuzzing protects against:
 - **Path Traversal**: Prevents reading/writing outside allowed directories
+- **Symbolic Link Attacks**: Rejects symlinks that could point outside allowed paths
+- **Device File Writes**: Prevents writing to `/dev/null`, `/dev/random`, etc.
 - **Template Injection**: Prevents malicious template execution
 - **DoS Attacks**: Catches infinite loops and resource exhaustion
 - **Input Validation Bypass**: Finds edge cases in validation logic
