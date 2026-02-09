@@ -11,6 +11,9 @@ UNIT_FILE_DEST="/etc/systemd/system/secrets-sync.service"
 ENV_FILE_SRC="examples/systemd/secrets-sync.env.example"
 ENV_FILE_DEST="/etc/default/secrets-sync"
 CONFIG_DIR="/etc/secrets-sync"
+MAN_PAGE_SRC="docs/secrets-sync.1"
+MAN_PAGE_DEST="/usr/share/man/man1/secrets-sync.1"
+DOC_DIR="/usr/share/doc/secrets-sync"
 
 log_message() {
     echo "$(date '+%Y-%m-%d %H:%M:%S') ${SCRIPT_NAME} - $1"
@@ -75,6 +78,38 @@ generate_config() {
     fi
 }
 
+install_man_page() {
+    if [ -f "${MAN_PAGE_SRC}" ]; then
+        log_message "Installing man page to ${MAN_PAGE_DEST}"
+        mkdir -p "$(dirname "${MAN_PAGE_DEST}")"
+        cp "${MAN_PAGE_SRC}" "${MAN_PAGE_DEST}"
+        chmod 644 "${MAN_PAGE_DEST}"
+        gzip -f "${MAN_PAGE_DEST}"
+        log_message "Man page installed (run 'man secrets-sync')"
+    else
+        log_message "WARNING: Man page not found at ${MAN_PAGE_SRC}, skipping"
+    fi
+}
+
+install_documentation() {
+    log_message "Installing documentation to ${DOC_DIR}"
+    mkdir -p "${DOC_DIR}"
+
+    # Copy documentation files
+    for doc in docs/*.md; do
+        if [ -f "$doc" ]; then
+            cp "$doc" "${DOC_DIR}/"
+        fi
+    done
+
+    # Copy README and LICENSE
+    [ -f "README.md" ] && cp "README.md" "${DOC_DIR}/"
+    [ -f "LICENSE" ] && cp "LICENSE" "${DOC_DIR}/"
+
+    chmod -R 644 "${DOC_DIR}"/*
+    log_message "Documentation installed"
+}
+
 reload_systemd() {
     log_message "Reloading systemd daemon"
     systemctl daemon-reload
@@ -88,7 +123,7 @@ enable_service() {
 
 main() {
     log_message "Starting secrets-sync systemd installation"
-    
+
     check_root
     check_binary
     install_binary
@@ -96,9 +131,11 @@ main() {
     install_unit_file
     install_env_file
     generate_config
+    install_man_page
+    install_documentation
     reload_systemd
     enable_service
-    
+
     log_message "Installation complete!"
     log_message ""
     log_message "Next steps:"
@@ -107,6 +144,7 @@ main() {
     log_message "  3. Start service:      systemctl start secrets-sync"
     log_message "  4. Check status:       systemctl status secrets-sync"
     log_message "  5. View logs:          journalctl -u secrets-sync -f"
+    log_message "  6. Read manual:        man secrets-sync"
 }
 
 main "$@"

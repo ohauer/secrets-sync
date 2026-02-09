@@ -8,6 +8,8 @@ BINARY_DEST="/usr/local/bin/secrets-sync"
 UNIT_FILE_DEST="/etc/systemd/system/secrets-sync.service"
 ENV_FILE_DEST="/etc/default/secrets-sync"
 CONFIG_DIR="/etc/secrets-sync"
+MAN_PAGE_DEST="/usr/share/man/man1/secrets-sync.1.gz"
+DOC_DIR="/usr/share/doc/secrets-sync"
 
 log_message() {
     echo "$(date '+%Y-%m-%d %H:%M:%S') ${SCRIPT_NAME} - $1"
@@ -76,9 +78,23 @@ reload_systemd() {
     systemctl daemon-reload
 }
 
+remove_man_page() {
+    if [ -f "${MAN_PAGE_DEST}" ]; then
+        log_message "Removing man page ${MAN_PAGE_DEST}"
+        rm -f "${MAN_PAGE_DEST}"
+    fi
+}
+
+remove_documentation() {
+    if [ -d "${DOC_DIR}" ]; then
+        log_message "Removing documentation ${DOC_DIR}"
+        rm -rf "${DOC_DIR}"
+    fi
+}
+
 main() {
     log_message "Starting secrets-sync systemd uninstallation"
-    
+
     check_root
     stop_service
     disable_service
@@ -86,8 +102,10 @@ main() {
     remove_binary
     remove_env_file
     remove_config
+    remove_man_page
+    remove_documentation
     reload_systemd
-    
+
     log_message "Uninstallation complete!"
 }
 
