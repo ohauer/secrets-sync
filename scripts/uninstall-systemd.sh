@@ -92,6 +92,23 @@ remove_documentation() {
     fi
 }
 
+remove_user() {
+    if id -u secrets-sync >/dev/null 2>&1; then
+        printf "Remove secrets-sync user and group? [y/N] "
+        read -r response
+        case "${response}" in
+            [yY][eE][sS]|[yY])
+                log_message "Removing secrets-sync user and group"
+                userdel secrets-sync 2>/dev/null || true
+                log_message "User removed"
+                ;;
+            *)
+                log_message "Keeping secrets-sync user and group"
+                ;;
+        esac
+    fi
+}
+
 main() {
     log_message "Starting secrets-sync systemd uninstallation"
 
@@ -104,9 +121,12 @@ main() {
     remove_config
     remove_man_page
     remove_documentation
+    remove_user
     reload_systemd
 
     log_message "Uninstallation complete!"
+    log_message ""
+    log_message "Note: /secrets directory was not removed (may contain data)"
 }
 
 main "$@"

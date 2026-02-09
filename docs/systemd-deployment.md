@@ -28,11 +28,13 @@ sudo make install-systemd
 
 This will:
 1. Build the binary
-2. Install to `/usr/local/bin/secrets-sync`
-3. Create config directory `/etc/secrets-sync`
-4. Generate sample config
-5. Install systemd unit file
-6. Enable the service
+2. Create `secrets-sync` system user and group
+3. Install to `/usr/local/bin/secrets-sync`
+4. Create config directory `/etc/secrets-sync`
+5. Create `/secrets` directory (default output path)
+6. Generate sample config
+7. Install systemd unit file
+8. Enable the service
 
 ### Manual Installation
 
@@ -106,15 +108,19 @@ IPAddressAllow=192.168.1.100
 **File Paths**:
 ```ini
 # Add paths where secrets will be written
-ReadWritePaths=/var/lib/secrets-sync
+ReadWritePaths=/secrets
 ReadWritePaths=/app/secrets
+ReadWritePaths=/etc/nginx/ssl
 ```
 
-**Run as Specific User**:
-```ini
-# Instead of DynamicUser=yes
-User=myapp
-Group=myapp
+**Sharing Secrets with Other Services**:
+```bash
+# Add other service users to secrets-sync group
+sudo usermod -a -G secrets-sync nginx
+sudo usermod -a -G secrets-sync postgres
+
+# Set appropriate file permissions in config
+# mode: "0640" allows group read access
 ```
 
 ## Service Management
@@ -228,8 +234,20 @@ The provided unit file includes extensive security hardening:
 - `SystemCallFilter=~@privileged` - Block privileged calls
 
 ### User Isolation
-- `DynamicUser=yes` - Ephemeral user per service instance
-- `StateDirectory=secrets-sync` - Automatic directory creation
+- `User=secrets-sync` - Dedicated system user
+- `Group=secrets-sync` - Dedicated system group
+- `ConfigurationDirectory=secrets-sync` - Automatic /etc/secrets-sync creation
+- `RuntimeDirectory=secrets-sync` - Automatic /run/secrets-sync creation
+
+**Why Static User Instead of DynamicUser?**
+
+The service uses a static user (`secrets-sync`) rather than `DynamicUser=yes` because:
+1. **Persistent UID** - Files maintain correct ownership across reboots/reinstalls
+2. **Flexible Paths** - Can write to arbitrary paths (not limited to StateDirectory)
+3. **Group Sharing** - Other services can access secrets via group membership
+4. **External Access** - Services like nginx/postgres can read the secret files
+
+With `DynamicUser=yes`, the UID changes on each restart, breaking file ownership.
 
 ## Troubleshooting
 
@@ -315,24 +333,54 @@ curl -H "X-Vault-Token: $VAULT_TOKEN" \
 
 ## Advanced Configuration
 
+### Sharing Secrets with Other Services
+
+To allow other services (nginx, postgres, etc.) to read secrets:
+
+**Option 1: Group Access (Recommended)**
+```bash
+# Add service users to secrets-sync group
+sudo usermod -a -G secrets-sync nginx
+sudo usermod -a -G secrets-sync postgres
+
+# Set group-readable permissions in config
+files:
+  - path: "/secrets/nginx.crt"
+    mode: "0640"  # Owner: rw, Group: r, Other: none
+```
+
+**Option 2: World-Readable (Less Secure)**
+```yaml
+files:
+  - path: "/secrets/public.crt"
+    mode: "0644"  # Anyone can read
+```
+
+**Option 3: Specific Directory Permissions**
+```bash
+# Pre-create directory with specific ownership
+sudo mkdir -p /etc/nginx/ssl
+sudo chown secrets-sync:nginx /etc/nginx/ssl
+sudo chmod 750 /etc/nginx/ssl
+
+# Add to systemd unit file
+ReadWritePaths=/etc/nginx/ssl
+```
+
 ### Custom User and Group
 
-Create a dedicated user:
+The installation script automatically creates the `secrets-sync` user and group.
+
+If you need to recreate it manually:
 ```bash
-sudo useradd -r -s /bin/false -d /var/lib/secrets-sync secrets-sync
+sudo useradd -r -s /bin/false -d /nonexistent -c "Secrets Sync Service" secrets-sync
 ```
 
-Update unit file:
-```ini
-# Comment out DynamicUser=yes
-User=secrets-sync
-Group=secrets-sync
-```
-
-Create directories:
+Create secret directories:
 ```bash
-sudo mkdir -p /var/lib/secrets-sync
-sudo chown secrets-sync:secrets-sync /var/lib/secrets-sync
+sudo mkdir -p /secrets
+sudo chown secrets-sync:secrets-sync /secrets
+sudo chmod 750 /secrets
 ```
 
 ### Multiple Instances
