@@ -25,6 +25,11 @@ func Validate(cfg *Config) error {
 		return fmt.Errorf("too many secrets defined (%d), maximum is 100", len(cfg.Secrets))
 	}
 
+	// Check for duplicate file paths
+	if err := validateNoDuplicatePaths(cfg.Secrets); err != nil {
+		return err
+	}
+
 	for i, secret := range cfg.Secrets {
 		if err := validateSecret(&secret); err != nil {
 			return fmt.Errorf("secrets[%d]: %w", i, err)
@@ -249,4 +254,25 @@ func expandEnv(s string) string {
 		return os.Getenv(envVar)
 	}
 	return s
+}
+
+// validateNoDuplicatePaths checks that no two different secrets write to the same file path
+func validateNoDuplicatePaths(secrets []Secret) error {
+	pathToSecret := make(map[string]string) // path -> secret name
+
+	for _, secret := range secrets {
+		for _, file := range secret.Files {
+			if existingSecret, found := pathToSecret[file.Path]; found {
+				if existingSecret != secret.Name {
+					return fmt.Errorf("duplicate file path %q: used by both secret %q and secret %q (race condition)",
+						file.Path, existingSecret, secret.Name)
+				}
+				// Same secret writing to same path multiple times is OK (idempotent)
+			} else {
+				pathToSecret[file.Path] = secret.Name
+			}
+		}
+	}
+
+	return nil
 }
