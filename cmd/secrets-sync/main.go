@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/ohauer/docker-secrets/internal/config"
@@ -193,6 +194,15 @@ func run() error {
 		zap.String("address", cfg.SecretStore.Address),
 		zap.String("auth_method", cfg.SecretStore.AuthMethod),
 	)
+
+	// Warn if using HTTP (insecure)
+	if strings.HasPrefix(cfg.SecretStore.Address, "http://") &&
+		!strings.Contains(cfg.SecretStore.Address, "localhost") &&
+		!strings.Contains(cfg.SecretStore.Address, "127.0.0.1") {
+		logger.Warn("using insecure HTTP connection to Vault - use HTTPS in production",
+			zap.String("address", cfg.SecretStore.Address),
+		)
+	}
 
 	// Create syncer
 	retryConfig := vault.RetryConfig{

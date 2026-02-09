@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"syscall"
 )
 
@@ -26,6 +27,11 @@ func NewWriter() *Writer {
 
 // WriteFile writes content to a file atomically
 func (w *Writer) WriteFile(config FileConfig, content string) error {
+	// Validate path for security
+	if err := validatePath(config.Path); err != nil {
+		return fmt.Errorf("invalid path: %w", err)
+	}
+
 	if err := w.ensureDir(filepath.Dir(config.Path)); err != nil {
 		return err
 	}
@@ -59,6 +65,25 @@ func (w *Writer) WriteFile(config FileConfig, content string) error {
 	return nil
 }
 
+// validatePath checks for path traversal attempts
+func validatePath(path string) error {
+	if path == "" {
+		return fmt.Errorf("path cannot be empty")
+	}
+
+	// Ensure path is absolute for security
+	if !filepath.IsAbs(path) {
+		return fmt.Errorf("path must be absolute")
+	}
+
+	// Check for path traversal attempts before cleaning
+	if strings.Contains(path, "..") {
+		return fmt.Errorf("path contains '..' which is not allowed")
+	}
+
+	return nil
+}
+
 func (w *Writer) ensureDir(dir string) error {
 	if dir == "" || dir == "." {
 		return nil
@@ -82,7 +107,37 @@ func ParseMode(mode string) (os.FileMode, error) {
 		return 0, fmt.Errorf("invalid mode: %w", err)
 	}
 
-	return os.FileMode(m), nil
+	fileMode := os.FileMode(m)
+
+	// Validate mode is not too permissive
+	if err := validateMode(fileMode); err != nil {
+		return 0, err
+	}
+
+	return fileMode, nil
+}
+
+// validateMode ensures file mode is not overly permissive
+func validateMode(mode os.FileMode) error {
+	// Extract permission bits (ignore file type bits)
+	perm := mode & os.ModePerm
+
+	// Check if world-writable (other write bit set)
+	if perm&0002 != 0 {
+		return fmt.Errorf("world-writable permissions (0%o) are not allowed", perm)
+	}
+
+	// Check if group-writable and world-readable (too permissive for secrets)
+	if perm&0020 != 0 && perm&0004 != 0 {
+		return fmt.Errorf("group-writable with world-readable (0%o) is too permissive", perm)
+	}
+
+	// Warn if more permissive than 0644
+	if perm > 0644 {
+		return fmt.Errorf("permissions (0%o) are too permissive, maximum is 0644", perm)
+	}
+
+	return nil
 }
 
 // ParseOwner parses owner/group string to int

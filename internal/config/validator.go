@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"net/url"
 	"os"
 	"strings"
 )
@@ -28,6 +29,11 @@ func Validate(cfg *Config) error {
 func validateSecretStore(store *SecretStore) error {
 	if store.Address == "" {
 		return fmt.Errorf("address is required")
+	}
+
+	// Validate Vault address is a valid URL
+	if err := validateVaultAddress(store.Address); err != nil {
+		return err
 	}
 
 	if store.AuthMethod == "" {
@@ -83,6 +89,28 @@ func validateSecretStore(store *SecretStore) error {
 		if _, err := os.Stat(store.TLSClientKey); os.IsNotExist(err) {
 			return fmt.Errorf("tlsClientKey file does not exist: %s", store.TLSClientKey)
 		}
+	}
+
+	return nil
+}
+
+// validateVaultAddress validates the Vault address is a valid URL
+func validateVaultAddress(address string) error {
+	u, err := url.Parse(address)
+	if err != nil {
+		return fmt.Errorf("invalid address URL: %w", err)
+	}
+
+	if u.Scheme == "" {
+		return fmt.Errorf("address must include scheme (http:// or https://)")
+	}
+
+	if u.Scheme != "http" && u.Scheme != "https" {
+		return fmt.Errorf("address scheme must be http or https, got: %s", u.Scheme)
+	}
+
+	if u.Host == "" {
+		return fmt.Errorf("address must include host")
 	}
 
 	return nil

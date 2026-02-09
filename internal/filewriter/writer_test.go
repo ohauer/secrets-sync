@@ -120,7 +120,6 @@ func TestParseMode_Valid(t *testing.T) {
 	}{
 		{"0600", 0600},
 		{"0644", 0644},
-		{"0755", 0755},
 		{"", 0600},
 	}
 
@@ -136,9 +135,18 @@ func TestParseMode_Valid(t *testing.T) {
 }
 
 func TestParseMode_Invalid(t *testing.T) {
-	_, err := ParseMode("invalid")
-	if err == nil {
-		t.Error("expected error for invalid mode, got nil")
+	tests := []string{
+		"invalid",
+		"0777", // world-writable
+		"0666", // world-writable
+		"0755", // too permissive
+	}
+
+	for _, input := range tests {
+		_, err := ParseMode(input)
+		if err == nil {
+			t.Errorf("expected error for mode %s, got nil", input)
+		}
 	}
 }
 
@@ -167,6 +175,31 @@ func TestParseOwner_Invalid(t *testing.T) {
 	_, err := ParseOwner("invalid")
 	if err == nil {
 		t.Error("expected error for invalid owner, got nil")
+	}
+}
+
+func TestValidatePath(t *testing.T) {
+	tests := []struct {
+		name    string
+		path    string
+		wantErr bool
+	}{
+		{"valid absolute path", "/tmp/secret.txt", false},
+		{"valid nested path", "/var/lib/secrets/db.txt", false},
+		{"empty path", "", true},
+		{"relative path", "secret.txt", true},
+		{"relative with dot", "./secret.txt", true},
+		{"path traversal", "/tmp/../etc/passwd", true},
+		{"path traversal nested", "/var/lib/../../etc/passwd", true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validatePath(tt.path)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("validatePath(%s) error = %v, wantErr %v", tt.path, err, tt.wantErr)
+			}
+		})
 	}
 }
 
