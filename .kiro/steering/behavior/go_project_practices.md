@@ -62,7 +62,7 @@ func main() {
             os.Exit(1)
         }
     }
-    
+
     if err := run(); err != nil {
         // Handle error
         os.Exit(1)
@@ -253,7 +253,7 @@ func validatePath(path string) error {
     if len(path) > MaxPathLen {
         return fmt.Errorf("path too long")
     }
-    
+
     // 2. Reject Windows special paths
     if strings.HasPrefix(path, `\\?\`) {
         return fmt.Errorf("extended paths not allowed")
@@ -261,17 +261,17 @@ func validatePath(path string) error {
     if strings.HasPrefix(path, `\\`) {
         return fmt.Errorf("UNC paths not allowed")
     }
-    
+
     // 3. Require absolute paths
     if !filepath.IsAbs(path) {
         return fmt.Errorf("path must be absolute")
     }
-    
+
     // 4. Reject path traversal
     if strings.Contains(path, "..") {
         return fmt.Errorf("path traversal not allowed")
     }
-    
+
     return nil
 }
 ```
@@ -287,17 +287,17 @@ func validateFileType(path string) error {
         }
         return err
     }
-    
+
     // Reject symlinks
     if info.Mode()&os.ModeSymlink != 0 {
         return fmt.Errorf("symlinks not allowed")
     }
-    
+
     // Reject special files (devices, pipes, sockets)
     if !info.Mode().IsRegular() && !info.Mode().IsDir() {
         return fmt.Errorf("only regular files allowed")
     }
-    
+
     return nil
 }
 ```
@@ -360,7 +360,7 @@ func FuzzValidatePath(f *testing.F) {
     f.Add("/tmp/test")
     f.Add("../../../etc/passwd")
     f.Add("/dev/null")
-    
+
     f.Fuzz(func(t *testing.T, path string) {
         _ = validatePath(path)  // Should not panic
     })
