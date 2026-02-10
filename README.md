@@ -1,6 +1,8 @@
 # Docker Secrets Sidecar
 
-A lightweight sidecar container for managing secrets from HashiCorp Vault or OpenBao in Docker/Podman environments. Continuously syncs secrets to the filesystem with configurable refresh intervals.
+*A lightweight tool for syncing Vault/OpenBao secrets to the filesystem*
+
+Continuously syncs secrets from HashiCorp Vault or OpenBao to the filesystem with configurable refresh intervals. Works as a Docker/Podman sidecar container or as a systemd service.
 
 ## Features
 
@@ -82,7 +84,9 @@ sudo make install-systemd
 # Manual installation
 make build
 sudo cp bin/secrets-sync /usr/local/bin/
-sudo mkdir -p /etc/secrets-sync
+sudo useradd -r -s /bin/false -d /var/lib/secrets-sync -c "Secrets Sync Service" secrets-sync
+sudo mkdir -p /etc/secrets-sync /var/lib/secrets-sync
+sudo chown secrets-sync:secrets-sync /var/lib/secrets-sync
 secrets-sync init | sudo tee /etc/secrets-sync/config.yaml
 sudo cp examples/systemd/secrets-sync.service /etc/systemd/system/
 sudo systemctl daemon-reload
@@ -91,6 +95,8 @@ sudo systemctl enable --now secrets-sync
 # Reload configuration without restart
 sudo systemctl reload secrets-sync
 ```
+
+The service uses `/var/lib/secrets-sync` as its working directory. Relative paths in your config will resolve there.
 
 See [Systemd Deployment Guide](docs/systemd-deployment.md) for detailed instructions.
 

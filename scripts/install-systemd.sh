@@ -56,10 +56,21 @@ create_config_dir() {
     fi
 }
 
+create_state_dir() {
+    STATE_DIR="/var/lib/secrets-sync"
+    if [ ! -d "${STATE_DIR}" ]; then
+        log_message "Creating state directory ${STATE_DIR}"
+        mkdir -p "${STATE_DIR}"
+        chown secrets-sync:secrets-sync "${STATE_DIR}"
+        chmod 755 "${STATE_DIR}"
+        log_message "State directory created (for relative paths)"
+    fi
+}
+
 create_user() {
     if ! id -u secrets-sync >/dev/null 2>&1; then
         log_message "Creating secrets-sync system user and group"
-        useradd -r -s /bin/false -d /nonexistent -c "Secrets Sync Service" secrets-sync
+        useradd -r -s /bin/false -d /var/lib/secrets-sync -c "Secrets Sync Service" secrets-sync
         log_message "User and group created successfully"
     else
         log_message "User secrets-sync already exists, skipping"
@@ -139,6 +150,7 @@ main() {
     create_user
     install_binary
     create_config_dir
+    create_state_dir
     install_unit_file
     install_env_file
     generate_config

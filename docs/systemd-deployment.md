@@ -414,8 +414,13 @@ The installation script automatically creates the `secrets-sync` user and group.
 
 If you need to recreate it manually:
 ```bash
-sudo useradd -r -s /bin/false -d /nonexistent -c "Secrets Sync Service" secrets-sync
+sudo useradd -r -s /bin/false -d /var/lib/secrets-sync -c "Secrets Sync Service" secrets-sync
+sudo mkdir -p /var/lib/secrets-sync
+sudo chown secrets-sync:secrets-sync /var/lib/secrets-sync
+sudo chmod 755 /var/lib/secrets-sync
 ```
+
+The service uses `/var/lib/secrets-sync` as its working directory for relative path resolution.
 
 Create output directories (example):
 ```bash
