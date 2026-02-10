@@ -2,7 +2,7 @@
 
 ## Docker Secrets Sidecar v0.1.0
 
-**Audit Date**: 2026-02-01
+**Audit Date**: 2026-02-10 (Updated)
 **Auditor**: Automated Security Review
 **Status**: ✅ No Critical Issues Found
 
@@ -13,6 +13,33 @@
 The codebase follows security best practices with only minor recommendations for improvement. No critical vulnerabilities were identified.
 
 **Risk Level**: LOW
+
+---
+
+## Recent Security Improvements (2026-02-10)
+
+The following DoS prevention and security hardening measures have been implemented:
+
+1. **Resource Limits**:
+   - Max secret content size: 1MB (prevents memory exhaustion)
+   - Max Vault response size: 10MB (prevents large response attacks)
+   - Duplicate path detection (prevents configuration errors)
+
+2. **Path Security**:
+   - Two-layer path validation (config + filewriter)
+   - Relative paths resolved to absolute paths securely
+   - Path traversal prevention with `filepath.Clean()`
+   - OS-specific path length limits enforced
+
+3. **File Operations**:
+   - Random temp file names (`.tmp.<random>`) prevent TOCTOU attacks
+   - Orphaned temp file cleanup on startup
+   - Configurable directory permissions (default 0750)
+
+4. **Validation Hardening**:
+   - Symlink rejection
+   - Special file rejection (devices, pipes, sockets)
+   - Windows UNC and extended path rejection
 
 ---
 
@@ -45,12 +72,16 @@ The codebase follows security best practices with only minor recommendations for
 
 #### 4. Input Validation
 - **Status**: ✅ SECURE
-- **Finding**: All inputs validated
+- **Finding**: All inputs validated with two-layer defense
 - **Evidence**:
   - Configuration validation in `validator.go`
   - Required fields checked
   - Auth method validation
-  - Path validation
+  - Path validation (two layers):
+    - Config layer: Accepts relative paths, resolves to absolute
+    - Filewriter layer: Only accepts absolute paths (defense in depth)
+  - Path traversal prevention
+  - OS-specific path limits enforced
 
 #### 5. Authentication
 - **Status**: ✅ SECURE
@@ -64,9 +95,10 @@ The codebase follows security best practices with only minor recommendations for
 - **Status**: ✅ SECURE
 - **Finding**: Atomic file writes prevent race conditions
 - **Evidence**:
-  - Write to `.tmp` file first
+  - Write to `.tmp.<random>` file first (unpredictable name prevents TOCTOU attacks)
   - Rename to final location (atomic operation)
   - Cleanup on error
+  - Orphaned temp files cleaned on startup
 
 #### 7. Circuit Breaker
 - **Status**: ✅ SECURE
@@ -156,23 +188,18 @@ type Client struct {
 
 ---
 
-### 4. Secure Temp File Creation
+### 4. Secure Temp File Creation ✅ IMPLEMENTED
 
-**Location**: `internal/filewriter/writer.go:34`
+**Location**: `internal/filewriter/writer.go`
 
-**Issue**: Predictable temp file name
+**Status**: ✅ Implemented (2026-02-10)
 
-**Current**:
-```go
-tmpFile := config.Path + ".tmp"
-```
-
-**Recommendation**: Use random temp file name
+**Implementation**:
 ```go
 tmpFile := config.Path + ".tmp." + randomString(8)
 ```
 
-**Risk**: LOW - Files written to controlled directory
+**Result**: Random temp file names prevent TOCTOU attacks
 
 ---
 
@@ -291,7 +318,7 @@ None
 
 ### Low Priority
 3. Add rate limiting
-4. Use random temp file names
+4. ~~Use random temp file names~~ ✅ IMPLEMENTED (2026-02-10)
 5. Add file integrity verification
 
 ---

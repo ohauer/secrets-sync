@@ -177,18 +177,23 @@ The key names in `template.data` are not used for file naming - they're just lab
 
 Each file entry supports:
 
-- `path` - Output file path (required)
+- `path` - Output file path (required, can be relative or absolute)
 - `mode` - File permissions in octal (default: `0600`)
 - `owner` - File owner UID (optional)
 - `group` - File group GID (optional)
+
+**Path Resolution:**
+- Relative paths (e.g., `secrets/file.txt`) are resolved to absolute paths based on the current working directory
+- Absolute paths (e.g., `/var/secrets/file.txt`) are used as-is
+- All paths are validated for security (no path traversal allowed)
 
 Example:
 
 ```yaml
 files:
-  - path: "/secrets/tls.crt"
+  - path: "/secrets/tls.crt"      # Absolute path
     mode: "0644"
-  - path: "/secrets/tls.key"
+  - path: "secrets/tls.key"       # Relative path (resolved to absolute)
     mode: "0600"
     owner: "1000"
     group: "1000"

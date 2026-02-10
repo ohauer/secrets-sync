@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -100,8 +101,22 @@ func run() error {
 	}
 	defer logger.Sync()
 
-	logger.Info("starting docker secrets sync",
-		zap.String("config_file", configPath),
+	// Log working directory for relative path resolution
+	workDir, err := os.Getwd()
+	if err != nil {
+		logger.Warn("failed to get working directory", zap.Error(err))
+		workDir = "unknown"
+	}
+
+	// Resolve config path to absolute for logging
+	absConfigPath, err := filepath.Abs(configPath)
+	if err != nil {
+		absConfigPath = configPath
+	}
+
+	logger.Info("starting secrets-sync",
+		zap.String("config_file", absConfigPath),
+		zap.String("working_directory", workDir),
 		zap.Bool("watch_config", envCfg.WatchConfig),
 	)
 
@@ -286,7 +301,17 @@ func run() error {
 		watcher, err := config.NewWatcher(
 			envCfg.ConfigFile,
 			func(newCfg *config.Config) error {
+				workDir, _ := os.Getwd()
+				if workDir == "" {
+					workDir = "unknown"
+				}
+				absConfigPath, err := filepath.Abs(configPath)
+				if err != nil {
+					absConfigPath = configPath
+				}
 				logger.Info("configuration reloaded",
+					zap.String("config_file", absConfigPath),
+					zap.String("working_directory", workDir),
 					zap.Int("secret_count", len(newCfg.Secrets)),
 				)
 				// Update secrets
@@ -361,6 +386,19 @@ func run() error {
 		case <-shutdownHandler.WaitReload():
 			logger.Info("reload signal (SIGHUP) received, reloading configuration")
 
+			// Log working directory for relative path resolution
+			workDir, err := os.Getwd()
+			if err != nil {
+				logger.Warn("failed to get working directory", zap.Error(err))
+				workDir = "unknown"
+			}
+
+			// Resolve config path to absolute for logging
+			absConfigPath, err := filepath.Abs(configPath)
+			if err != nil {
+				absConfigPath = configPath
+			}
+
 			// Reload configuration
 			newCfg, err := config.Load(configPath)
 			if err != nil {
@@ -380,6 +418,8 @@ func run() error {
 			// Update configuration
 			cfg = newCfg
 			logger.Info("configuration reloaded",
+				zap.String("config_file", absConfigPath),
+				zap.String("working_directory", workDir),
 				zap.Int("secret_count", len(cfg.Secrets)),
 			)
 

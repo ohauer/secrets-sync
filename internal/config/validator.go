@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -171,8 +172,8 @@ func validateSecret(secret *Secret) error {
 		return fmt.Errorf("template.data and files must have the same number of entries")
 	}
 
-	for i, file := range secret.Files {
-		if err := validateFile(&file); err != nil {
+	for i := range secret.Files {
+		if err := validateFile(&secret.Files[i]); err != nil {
 			return fmt.Errorf("files[%d]: %w", i, err)
 		}
 	}
@@ -184,6 +185,13 @@ func validateFile(file *File) error {
 	if file.Path == "" {
 		return fmt.Errorf("path is required")
 	}
+
+	// Resolve relative paths to absolute paths
+	absPath, err := filepath.Abs(file.Path)
+	if err != nil {
+		return fmt.Errorf("failed to resolve path: %w", err)
+	}
+	file.Path = filepath.Clean(absPath)
 
 	// Validate path for security (same validation as at write time)
 	if err := validateFilePath(file.Path); err != nil {
@@ -223,14 +231,18 @@ func validateFilePath(path string) error {
 		return fmt.Errorf("path cannot be empty")
 	}
 
-	// Ensure path is absolute for security
-	if !strings.HasPrefix(path, "/") {
-		return fmt.Errorf("path must be absolute")
+	// Resolve to absolute path (handles relative paths securely)
+	absPath, err := filepath.Abs(path)
+	if err != nil {
+		return fmt.Errorf("failed to resolve path: %w", err)
 	}
 
-	// Check for path traversal attempts
-	if strings.Contains(path, "..") {
-		return fmt.Errorf("path contains '..' which is not allowed")
+	// Clean the path to remove any .. or . components
+	cleanPath := filepath.Clean(absPath)
+
+	// Ensure the cleaned path is still absolute
+	if !filepath.IsAbs(cleanPath) {
+		return fmt.Errorf("path must be absolute")
 	}
 
 	return nil

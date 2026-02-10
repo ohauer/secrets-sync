@@ -35,11 +35,11 @@ all: lint test build
 
 build:
 	@mkdir -p $(BUILD_DIR)
-	CGO_ENABLED=0 $(GO) build $(GOFLAGS) $(LDFLAGS) -o $(BUILD_DIR)/$(BINARY_NAME) ./cmd/secrets-sync
+	CGO_ENABLED=0 $(GO) build $(GOFLAGS) -trimpath $(LDFLAGS) -o $(BUILD_DIR)/$(BINARY_NAME) ./cmd/secrets-sync
 
 build-static:
 	@mkdir -p $(BUILD_DIR)
-	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 $(GO) build -a $(LDFLAGS) -ldflags '-extldflags "-static"' -o $(BUILD_DIR)/$(BINARY_NAME) ./cmd/secrets-sync
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 $(GO) build -a -trimpath $(LDFLAGS) -ldflags '-extldflags "-static"' -o $(BUILD_DIR)/$(BINARY_NAME) ./cmd/secrets-sync
 
 test:
 	$(GO) test -v -race -coverprofile=coverage.out ./...

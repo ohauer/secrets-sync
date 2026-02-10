@@ -23,8 +23,14 @@ BUILD_DATE=$(shell date -u '+%Y-%m-%d_%H:%M:%S')
 LDFLAGS=-ldflags "-X main.Version=$(VERSION) -X main.GitCommit=$(GIT_COMMIT) -X main.BuildDate=$(BUILD_DATE)"
 
 build:
-	CGO_ENABLED=0 go build $(LDFLAGS) -o bin/app ./cmd/app
+	CGO_ENABLED=0 go build -trimpath $(LDFLAGS) -o bin/app ./cmd/app
 ```
+
+**Always use `-trimpath` flag:**
+- Removes build directory from error messages and stack traces
+- Improves privacy (doesn't leak developer paths)
+- Makes binaries reproducible
+- Example: Shows `internal/pkg/file.go:42` instead of `/home/user/project/internal/pkg/file.go:42`
 
 ### Version Display Format
 - Release builds: `0.1.0`
@@ -248,6 +254,16 @@ tmpFile := config.Path + ".tmp"  // Attacker can pre-create symlink
 #### Path Validation
 Validate all file paths with multiple checks:
 ```go
+// Config layer: Accept relative paths, resolve to absolute
+func validateFilePath(path string) error {
+    absPath, err := filepath.Abs(path)
+    if err != nil {
+        return fmt.Errorf("failed to resolve path: %w", err)
+    }
+    return validateAbsolutePath(filepath.Clean(absPath))
+}
+
+// Filewriter layer: Only accept absolute paths (defense in depth)
 func validatePath(path string) error {
     // 1. Check length against OS limits
     if len(path) > MaxPathLen {
@@ -275,6 +291,10 @@ func validatePath(path string) error {
     return nil
 }
 ```
+
+**Two-layer validation:**
+- Config validator: User-friendly, accepts relative paths and resolves them
+- Filewriter validator: Strict, only accepts absolute paths (defense in depth)
 
 #### File Type Validation
 Reject symlinks and special files:

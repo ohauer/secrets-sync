@@ -348,3 +348,38 @@ func TestValidate_SameSecretSamePathTwice(t *testing.T) {
 		t.Errorf("expected duplicate path error, got: %v", err)
 	}
 }
+
+func TestValidate_RelativePathResolution(t *testing.T) {
+	cfg := &Config{
+		SecretStore: SecretStore{
+			Address:    "http://localhost:8200",
+			AuthMethod: "token",
+			Token:      "test",
+		},
+		Secrets: []Secret{
+			{
+				Name:            "test-secret",
+				Key:             "secret/data/test",
+				MountPath:       "secret",
+				KVVersion:       "v2",
+				RefreshInterval: 5 * time.Minute,
+				Template: Template{Data: map[string]string{
+					"key": "{{ .value }}",
+				}},
+				Files: []File{
+					{Path: "relative/path/test.txt", Mode: "0600"},
+				},
+			},
+		},
+	}
+
+	err := Validate(cfg)
+	if err != nil {
+		t.Fatalf("expected no error for relative path, got: %v", err)
+	}
+
+	// Verify path was resolved to absolute
+	if !strings.HasPrefix(cfg.Secrets[0].Files[0].Path, "/") {
+		t.Errorf("expected absolute path, got: %s", cfg.Secrets[0].Files[0].Path)
+	}
+}
