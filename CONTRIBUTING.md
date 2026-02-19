@@ -22,7 +22,7 @@ This project and everyone participating in it is governed by our [Code of Conduc
 
 1. Fork the repository
 2. Clone your fork: `git clone https://github.com/YOUR_USERNAME/docker-secrets.git`
-3. Add upstream remote: `git remote add upstream https://github.com/ohauer/docker-secrets.git`
+3. Add upstream remote: `git remote add upstream https://github.com/ohauer/secrets-sync.git`
 4. Create a feature branch: `git checkout -b feature/your-feature-name`
 
 ## Development Setup
@@ -80,7 +80,7 @@ We welcome:
 
 ### Before You Start
 
-1. Check existing [issues](https://github.com/ohauer/docker-secrets/issues) and [pull requests](https://github.com/ohauer/docker-secrets/pulls)
+1. Check existing [issues](https://github.com/ohauer/secrets-sync/issues) and [pull requests](https://github.com/ohauer/secrets-sync/pulls)
 2. For major changes, open an issue first to discuss your proposal
 3. Ensure your changes align with the project's goals and architecture
 
@@ -298,7 +298,7 @@ go test -cpuprofile=cpu.prof -memprofile=mem.prof
 
 ## Questions?
 
-- Open a [Discussion](https://github.com/ohauer/docker-secrets/discussions)
+- Open a [Discussion](https://github.com/ohauer/secrets-sync/discussions)
 - Join our community chat (if available)
 - Check existing documentation
 

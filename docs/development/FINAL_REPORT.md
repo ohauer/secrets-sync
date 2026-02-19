@@ -151,7 +151,7 @@ make lint
 ### Docker Image
 ```bash
 # Build
-docker build -t docker-secrets:v1.0.0 .
+docker build -t secrets-sync:v1.0.0 .
 
 # Run
 docker run -v /secrets:/secrets \
@@ -159,14 +159,14 @@ docker run -v /secrets:/secrets \
   -e CONFIG_FILE=/config.yaml \
   -e VAULT_ADDR=http://vault:8200 \
   -e VAULT_TOKEN=your-token \
-  docker-secrets:v1.0.0
+  secrets-sync:v1.0.0
 ```
 
 ### Docker Compose
 ```yaml
 services:
   secrets-sidecar:
-    image: docker-secrets:v1.0.0
+    image: secrets-sync:v1.0.0
     volumes:
       - secrets:/secrets
       - ./config.yaml:/config.yaml:ro
@@ -371,4 +371,4 @@ The Docker Secrets Sidecar v1.0.0 is a **production-ready** tool that successful
 **Report Generated**: 2026-02-01
 **Version**: v1.0.0
 **Author**: ohauer
-**Project**: github.com/ohauer/docker-secrets
+**Project**: github.com/ohauer/secrets-sync

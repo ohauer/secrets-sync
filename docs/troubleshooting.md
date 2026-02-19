@@ -286,7 +286,7 @@ stat -c '%a %n' /secrets/*
 
 If you're still experiencing issues:
 
-1. Check [GitHub Issues](https://github.com/ohauer/docker-secrets/issues)
+1. Check [GitHub Issues](https://github.com/ohauer/secrets-sync/issues)
 2. Review [Configuration Documentation](configuration.md)
 3. Enable debug logging and collect logs
 4. Include configuration (redact secrets) when reporting issues

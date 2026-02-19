@@ -13,7 +13,7 @@ services:
 
   # Secrets sidecar
   secrets-sidecar:
-    image: docker-secrets:latest
+    image: secrets-sync:latest
     container_name: secrets-sidecar
     volumes:
       - secrets:/secrets

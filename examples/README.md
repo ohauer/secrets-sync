@@ -1,6 +1,6 @@
 # Examples
 
-This directory contains example configurations and scripts for testing docker-secrets.
+This directory contains example configurations and scripts for testing secrets-sync.
 
 ## Quick Start
 

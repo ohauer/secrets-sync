@@ -10,8 +10,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ohauer/docker-secrets/internal/config"
-	"github.com/ohauer/docker-secrets/internal/vault"
+	"github.com/ohauer/secrets-sync/internal/config"
+	"github.com/ohauer/secrets-sync/internal/vault"
 )
 
 // createTestFactory creates a client factory for testing

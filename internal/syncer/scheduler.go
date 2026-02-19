@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ohauer/docker-secrets/internal/config"
+	"github.com/ohauer/secrets-sync/internal/config"
 )
 
 // Scheduler manages periodic secret synchronization

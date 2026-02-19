@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ohauer/docker-secrets/internal/filewriter"
+	"github.com/ohauer/secrets-sync/internal/filewriter"
 )
 
 // Validate checks if the configuration is valid

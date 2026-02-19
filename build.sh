@@ -1,18 +1,18 @@
 #!/bin/sh
 set -e
 
-echo "Building docker-secrets container image..."
+echo "Building secrets-sync container image..."
 
 # Build the image
-docker build -t docker-secrets:latest .
+docker build -t secrets-sync:latest .
 
 echo ""
 echo "Build complete!"
 echo ""
-echo "Image: docker-secrets:latest"
+echo "Image: secrets-sync:latest"
 echo ""
 echo "To run:"
-echo "  docker run --rm docker-secrets:latest --help"
+echo "  docker run --rm secrets-sync:latest --help"
 echo ""
 echo "To check image size:"
-echo "  docker images docker-secrets:latest"
+echo "  docker images secrets-sync:latest"

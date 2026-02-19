@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/ohauer/docker-secrets/internal/config"
+	"github.com/ohauer/secrets-sync/internal/config"
 )
 
 func validateConfig(configFile string) error {

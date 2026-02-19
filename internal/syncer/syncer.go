@@ -6,10 +6,10 @@ import (
 	"sort"
 	"time"
 
-	"github.com/ohauer/docker-secrets/internal/config"
-	"github.com/ohauer/docker-secrets/internal/filewriter"
-	"github.com/ohauer/docker-secrets/internal/template"
-	"github.com/ohauer/docker-secrets/internal/vault"
+	"github.com/ohauer/secrets-sync/internal/config"
+	"github.com/ohauer/secrets-sync/internal/filewriter"
+	"github.com/ohauer/secrets-sync/internal/template"
+	"github.com/ohauer/secrets-sync/internal/vault"
 )
 
 // ClientFactory creates Vault clients with specific credentials

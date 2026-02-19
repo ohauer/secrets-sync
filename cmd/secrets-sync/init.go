@@ -6,7 +6,7 @@ import (
 
 func printInitConfig() {
 	fmt.Print(`# Docker Secrets Sync Configuration
-# See https://github.com/ohauer/docker-secrets for full documentation
+# See https://github.com/ohauer/secrets-sync for full documentation
 
 secretStore:
   # Vault/OpenBao server address

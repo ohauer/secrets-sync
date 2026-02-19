@@ -22,7 +22,7 @@ We take the security of Docker Secrets Sidecar seriously. If you believe you hav
 
 **Preferred Method: GitHub Security Advisories**
 
-1. Go to the [Security tab](https://github.com/ohauer/docker-secrets/security/advisories)
+1. Go to the [Security tab](https://github.com/ohauer/secrets-sync/security/advisories)
 2. Click "Report a vulnerability"
 3. Fill out the form with details about the vulnerability
 
@@ -184,7 +184,7 @@ We recognize security researchers who help improve our security:
 ## Contact
 
 For security-related questions that are not vulnerabilities:
-- Open a [Discussion](https://github.com/ohauer/docker-secrets/discussions)
+- Open a [Discussion](https://github.com/ohauer/secrets-sync/discussions)
 - Check our [documentation](docs/)
 
 ## Additional Resources

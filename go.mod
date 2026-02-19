@@ -1,4 +1,4 @@
-module github.com/ohauer/docker-secrets
+module github.com/ohauer/secrets-sync
 
 go 1.25.6
 

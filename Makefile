@@ -75,14 +75,14 @@ run:
 	$(GO) run ./cmd/secrets-sync
 
 docker-build:
-	docker build -t docker-secrets:latest .
+	docker build -t secrets-sync:latest .
 
 docker-run:
-	docker run --rm docker-secrets:latest
+	docker run --rm secrets-sync:latest
 
 docker-test:
-	docker build -t docker-secrets:test .
-	docker run --rm docker-secrets:test isready; echo "Exit code: $$?"
+	docker build -t secrets-sync:test .
+	docker run --rm secrets-sync:test isready; echo "Exit code: $$?"
 
 install-systemd: build
 	@echo "Installing secrets-sync as systemd service..."
